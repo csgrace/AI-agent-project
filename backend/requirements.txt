@@ -1,0 +1,38 @@
+# LangChain 核心
+langchain==1.2.13
+langchain_core==1.2.23
+langchain_openai==1.1.12
+langchain_community==0.4.1
+
+# 数据模型（Event 类需要）
+pydantic==2.12.5
+python-dateutil>=2.8.2
+pytz>=2023.3
+tzdata>=2024.1
+
+# 开发测试工具
+pytest==9.0.2
+black>=23.11.0
+
+# 环境变量管理
+python-dotenv>=1.0.0
+
+# 向量数据库与 PDF 处理
+faiss-cpu>=1.7.4
+PyMuPDF>=1.23.0
+
+# 杂项依赖
+PyYAML==6.0.3
+Requests==2.33.0
+fastapi
+uvicorn
+openai>=1.0.0
+python-multipart>=0.0.9
+sse-starlette>=2.0.0
+todoist-api-python>=3.1.0
+numpy>=1.24.0
+playwright>=1.40.0
+
+# 学习助手 Agent 依赖
+python-pptx>=1.0.0
+mistletoe>=1.5.0

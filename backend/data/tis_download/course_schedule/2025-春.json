@@ -1,0 +1,243 @@
+{
+  "term_label": "2025-春",
+  "meetings": [
+    {
+      "course_name": "IELTS Preparation（IELTS Preparation-01班-英文）",
+      "instructor": "刘玥玥",
+      "day_of_week": 2,
+      "start_slot": 1,
+      "end_slot": 2,
+      "weeks": "1-16周",
+      "location": "一教226",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "IELTS Preparation\n[刘玥玥]\n[IELTS Preparation-01班-英文]\n[1-16周][一教226][1-2节]"
+      }
+    },
+    {
+      "course_name": "算法设计与分析（算法设计与分析-02班-英文-1组）",
+      "instructor": "王维语",
+      "day_of_week": 3,
+      "start_slot": 1,
+      "end_slot": 2,
+      "weeks": "1-16周",
+      "location": "三教507机房",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "算法设计与分析\n[王维语]\n[算法设计与分析-02班-英文-1组]\n[1-16周][三教507机房][1-2节]"
+      }
+    },
+    {
+      "course_name": "沟通技巧（沟通技巧-02班-英文）",
+      "instructor": "徐嗣群",
+      "day_of_week": 1,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-16周",
+      "location": "三教403",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "沟通技巧\n[徐嗣群]\n[沟通技巧-02班-英文]\n[1-16周][三教403][3-4节]"
+      }
+    },
+    {
+      "course_name": "大学的社会功用（大学的社会功用-01班-双语）",
+      "instructor": "YUAN GAO",
+      "day_of_week": 3,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-16周",
+      "location": "一教110",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "大学的社会功用\n[YUAN GAO]\n[大学的社会功用-01班-双语]\n[1-16周][一教110][3-4节]"
+      }
+    },
+    {
+      "course_name": "信号和系统（信号和系统-02班-双语）",
+      "instructor": "王小静",
+      "day_of_week": 4,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-16周",
+      "location": "三教508机房",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "信号和系统\n[王小静]\n[信号和系统-02班-双语]\n[1-16周][三教508机房][3-4节]"
+      }
+    },
+    {
+      "course_name": "体育IV（体育IV-中文-羽毛球2班）",
+      "instructor": "孙瑜",
+      "day_of_week": 5,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-16周",
+      "location": "润杨体育馆羽毛球场",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "体育IV\n[孙瑜]\n[体育IV-中文-羽毛球2班]\n[1-16周][润杨体育馆羽毛球场][3-4节]"
+      }
+    },
+    {
+      "course_name": "市场营销管理（市场营销管理-01班-中文）",
+      "instructor": "王捷",
+      "day_of_week": 1,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "1-16周",
+      "location": "三教206",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "市场营销管理\n[王捷]\n[市场营销管理-01班-中文]\n[1-16周][三教206][5-6节]"
+      }
+    },
+    {
+      "course_name": "计算机组成原理（计算机组成原理-02班-英文-1组）",
+      "instructor": "王薇",
+      "day_of_week": 2,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "1-16周",
+      "location": "三教507机房",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "计算机组成原理\n[王薇]\n[计算机组成原理-02班-英文-1组]\n[1-16周][三教507机房][5-6节]"
+      }
+    },
+    {
+      "course_name": "信号和系统（信号和系统-02班-双语）",
+      "instructor": "张福才",
+      "day_of_week": 3,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "1-16周",
+      "location": "一教323",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "信号和系统\n[张福才]\n[信号和系统-02班-双语]\n[1-16周][一教323][5-6节]"
+      }
+    },
+    {
+      "course_name": "舌尖上的健康（舌尖上的健康-01班-双语）",
+      "instructor": "郎曌博",
+      "day_of_week": 5,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "13周",
+      "location": "一教422",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "舌尖上的健康\n[郎曌博]\n[舌尖上的健康-01班-双语]\n[13周][一教422][5-6节]\n舌尖上的健康\n[王鹏程]\n[舌尖上的健康-01班-双语]\n[1-12,14-16周][一教422][5-6节]"
+      }
+    },
+    {
+      "course_name": "计算机组成原理（计算机组成原理-02班-英文）",
+      "instructor": "白雨卉",
+      "day_of_week": 1,
+      "start_slot": 7,
+      "end_slot": 8,
+      "weeks": "11周",
+      "location": "三教108",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "计算机组成原理\n[白雨卉]\n[计算机组成原理-02班-英文]\n[11周][三教108][7-8节]\n计算机组成原理\n[张进]\n[计算机组成原理-02班-英文]\n[1-10,12-16周][三教108][7-8节]"
+      }
+    },
+    {
+      "course_name": "离散数学（离散数学-01班-英文）",
+      "instructor": "唐茗",
+      "day_of_week": 1,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "1-16周",
+      "location": "一教107",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "离散数学\n[唐茗]\n[离散数学-01班-英文]\n[1-16周][一教107][9-10节]"
+      }
+    },
+    {
+      "course_name": "算法设计与分析（算法设计与分析-02班-英文）",
+      "instructor": "史玉回",
+      "day_of_week": 2,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "1-16周",
+      "location": "一教111",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "算法设计与分析\n[史玉回]\n[算法设计与分析-02班-英文]\n[1-16周][一教111][9-10节]"
+      }
+    },
+    {
+      "course_name": "离散数学（离散数学-01班-英文）",
+      "instructor": "唐茗",
+      "day_of_week": 3,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "2-16双周",
+      "location": "一教107",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "离散数学\n[唐茗]\n[离散数学-01班-英文]\n[2-16双周][一教107][9-10节]"
+      }
+    },
+    {
+      "course_name": "离散数学（离散数学-01班-英文）",
+      "instructor": "唐茗",
+      "day_of_week": 1,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "1-16周",
+      "location": "一教107",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "离散数学\n[唐茗]\n[离散数学-01班-英文]\n[1-16周][一教107][9-10节]"
+      }
+    },
+    {
+      "course_name": "算法设计与分析（算法设计与分析-02班-英文）",
+      "instructor": "史玉回",
+      "day_of_week": 2,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "1-16周",
+      "location": "一教111",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "算法设计与分析\n[史玉回]\n[算法设计与分析-02班-英文]\n[1-16周][一教111][9-10节]"
+      }
+    },
+    {
+      "course_name": "离散数学（离散数学-01班-英文）",
+      "instructor": "唐茗",
+      "day_of_week": 3,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "2-16双周",
+      "location": "一教107",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "离散数学\n[唐茗]\n[离散数学-01班-英文]\n[2-16双周][一教107][9-10节]"
+      }
+    }
+  ]
+}

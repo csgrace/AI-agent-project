@@ -1,0 +1,25 @@
+URL: https://sustech.online/about/
+
+主项目托管在SUSTech-CRA/sustech-online-ng
+镜像：Git@SUSTech
+小程序托管在SUSTech-CRA/sustech-online-wxapp
+快讯网托管在SUSTech-CRA/sustech-online-daily-blog
+Pull request
+Fork 后，进行修改。
+发起 Merge 请求。
+邮件提交
+发送邮件到 support__at__mail.sustech.online (__at__ 替换为 @)
+代理提交
+进入南科手册 QQ群: 905618908
+提交规范编写的Word，Markdown 文件给管理员。
+管理员整理上传。
+感谢以下组织对南科手册所做的贡献（排名不分先后）
+树德书院先锋团
+致诚书院大学长团
+学生新闻社《南科新知》
+李子强 ◇ 樊青远 ◇ 陈宇恒
+感谢以下个人 / 组织对南科手册所提供的计算支持（排名不分先后）
+孙常超 ◇ 计算机研究协会 CRA
+本手册的部分交互组件开发使用了Jetbrains Open Source License。
+上海科技大学新生手册
+浙江大学求是潮

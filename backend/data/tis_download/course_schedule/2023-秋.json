@@ -1,0 +1,313 @@
+{
+  "term_label": "2023-秋",
+  "meetings": [
+    {
+      "course_name": "高等数学（上）（高等数学（上）-02班-双语）",
+      "instructor": "李觉先",
+      "day_of_week": 1,
+      "start_slot": 1,
+      "end_slot": 2,
+      "weeks": "1-16周",
+      "location": "三教108",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "高等数学（上）\n[李觉先]\n[高等数学（上）-02班-双语]\n[1-16周][三教108][1-2节]"
+      }
+    },
+    {
+      "course_name": "线性代数（线性代数-09班-双语）",
+      "instructor": "陈懿茂",
+      "day_of_week": 2,
+      "start_slot": 1,
+      "end_slot": 2,
+      "weeks": "1-16周",
+      "location": "三教206",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "线性代数\n[陈懿茂]\n[线性代数-09班-双语]\n[1-16周][三教206][1-2节]"
+      }
+    },
+    {
+      "course_name": "高等数学（上）（高等数学（上）-02班-双语）",
+      "instructor": "李觉先",
+      "day_of_week": 3,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-16周",
+      "location": "三教108",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "高等数学（上）\n[李觉先]\n[高等数学（上）-02班-双语]\n[1-16周][三教108][3-4节]"
+      }
+    },
+    {
+      "course_name": "线性代数（线性代数-09班-双语）",
+      "instructor": "陈懿茂",
+      "day_of_week": 4,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-14,16周",
+      "location": "三教206",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "线性代数\n[陈懿茂]\n[线性代数-09班-双语]\n[1-14,16周][三教206][3-4节]\n线性代数\n[数学外聘老师]\n[线性代数-09班-双语]\n[15周][三教206][3-4节]"
+      }
+    },
+    {
+      "course_name": "SUSTech English III（SUSTech English III-04班-英文）",
+      "instructor": "BeatriceClegg",
+      "day_of_week": 5,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-16周",
+      "location": "一教307",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "SUSTech English III\n[BeatriceClegg]\n[SUSTech English III-04班-英文]\n[1-16周][一教307][3-4节]"
+      }
+    },
+    {
+      "course_name": "体育I（体育I-中文-搏击1班）",
+      "instructor": "卢阳",
+      "day_of_week": 1,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "1-16周",
+      "location": "风雨操场搏击馆",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "体育I\n[卢阳]\n[体育I-中文-搏击1班]\n[1-16周][风雨操场搏击馆][5-6节]"
+      }
+    },
+    {
+      "course_name": "大学物理（上）（大学物理（上）-12班-双语）",
+      "instructor": "田振粮",
+      "day_of_week": 2,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "1-16周",
+      "location": "三教106",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "大学物理（上）\n[田振粮]\n[大学物理（上）-12班-双语]\n[1-16周][三教106][5-6节]"
+      }
+    },
+    {
+      "course_name": "思想道德与法治（思想道德与法治-11班-中文）",
+      "instructor": "马俊军",
+      "day_of_week": 3,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "1-16周",
+      "location": "三教202",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "思想道德与法治\n[马俊军]\n[思想道德与法治-11班-中文]\n[1-16周][三教202][5-6节]"
+      }
+    },
+    {
+      "course_name": "生命科学概论（生命科学概论-06班-双语）",
+      "instructor": "戴紫薇",
+      "day_of_week": 5,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "13周",
+      "location": "三教207",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "生命科学概论\n[戴紫薇]\n[生命科学概论-06班-双语]\n[13周][三教207][5-6节]\n生命科学概论\n[董涛]\n[生命科学概论-06班-双语]\n[5周][三教207][5-6节]\n生命科学概论\n[侯圣陶]\n[生命科学概论-06班-双语]\n[9周][三教207][5-6节]\n生命科学概论\n[刘东]\n[生命科学概论-06班-双语]\n[7周][三教207][5-6节]\n生命科学概论\n[温子龙]\n[生命科学概论-06班-双语]\n[11周][三教207][5-6节]\n生命科学概论\n[吴柘]\n[生命科学概论-06班-双语]\n[15周][三教207][5-6节]\n生命科学概论\n[余聪]\n[生命科学概论-06班-双语]\n[3周][三教207][5-6节]\n生命科学概论\n[赵燕]\n[生命科学概论-06班-双语]\n[1周][三教207][5-6节]"
+      }
+    },
+    {
+      "course_name": "体育I（体育I-中文-搏击1班）",
+      "instructor": "卢阳",
+      "day_of_week": 1,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "1-16周",
+      "location": "风雨操场搏击馆",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "体育I\n[卢阳]\n[体育I-中文-搏击1班]\n[1-16周][风雨操场搏击馆][5-6节]"
+      }
+    },
+    {
+      "course_name": "大学物理（上）（大学物理（上）-12班-双语）",
+      "instructor": "田振粮",
+      "day_of_week": 2,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "1-16周",
+      "location": "三教106",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "大学物理（上）\n[田振粮]\n[大学物理（上）-12班-双语]\n[1-16周][三教106][5-6节]"
+      }
+    },
+    {
+      "course_name": "思想道德与法治（思想道德与法治-11班-中文）",
+      "instructor": "马俊军",
+      "day_of_week": 3,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "1-16周",
+      "location": "三教202",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "思想道德与法治\n[马俊军]\n[思想道德与法治-11班-中文]\n[1-16周][三教202][5-6节]"
+      }
+    },
+    {
+      "course_name": "生命科学概论（生命科学概论-06班-双语）",
+      "instructor": "戴紫薇",
+      "day_of_week": 5,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "13周",
+      "location": "三教207",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "生命科学概论\n[戴紫薇]\n[生命科学概论-06班-双语]\n[13周][三教207][5-6节]\n生命科学概论\n[董涛]\n[生命科学概论-06班-双语]\n[5周][三教207][5-6节]\n生命科学概论\n[侯圣陶]\n[生命科学概论-06班-双语]\n[9周][三教207][5-6节]\n生命科学概论\n[刘东]\n[生命科学概论-06班-双语]\n[7周][三教207][5-6节]\n生命科学概论\n[温子龙]\n[生命科学概论-06班-双语]\n[11周][三教207][5-6节]\n生命科学概论\n[吴柘]\n[生命科学概论-06班-双语]\n[15周][三教207][5-6节]\n生命科学概论\n[余聪]\n[生命科学概论-06班-双语]\n[3周][三教207][5-6节]\n生命科学概论\n[赵燕]\n[生命科学概论-06班-双语]\n[1周][三教207][5-6节]"
+      }
+    },
+    {
+      "course_name": "SUSTech English III（SUSTech English III-04班-英文）",
+      "instructor": "BeatriceClegg",
+      "day_of_week": 2,
+      "start_slot": 7,
+      "end_slot": 8,
+      "weeks": "1-16周",
+      "location": "一教307",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "SUSTech English III\n[BeatriceClegg]\n[SUSTech English III-04班-英文]\n[1-16周][一教307][7-8节]"
+      }
+    },
+    {
+      "course_name": "生命科学概论（生命科学概论-06班-双语）",
+      "instructor": "戴紫薇",
+      "day_of_week": 3,
+      "start_slot": 7,
+      "end_slot": 8,
+      "weeks": "13-14周",
+      "location": "三教207",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "生命科学概论\n[戴紫薇]\n[生命科学概论-06班-双语]\n[13-14周][三教207][7-8节]\n生命科学概论\n[董涛]\n[生命科学概论-06班-双语]\n[5-6周][三教207][7-8节]\n生命科学概论\n[侯圣陶]\n[生命科学概论-06班-双语]\n[9-10周][三教207][7-8节]\n生命科学概论\n[刘东]\n[生命科学概论-06班-双语]\n[7-8周][三教207][7-8节]\n生命科学概论\n[温子龙]\n[生命科学概论-06班-双语]\n[11-12周][三教207][7-8节]\n生命科学概论\n[吴柘]\n[生命科学概论-06班-双语]\n[15-16周][三教207][7-8节]\n生命科学概论\n[余聪]\n[生命科学概论-06班-双语]\n[3-4周][三教207][7-8节]\n生命科学概论\n[赵燕]\n[生命科学概论-06班-双语]\n[1-2周][三教207][7-8节]"
+      }
+    },
+    {
+      "course_name": "成长通识（成长通识-20班-中文）",
+      "instructor": "郝鹏程",
+      "day_of_week": 4,
+      "start_slot": 7,
+      "end_slot": 8,
+      "weeks": "2-16双周",
+      "location": "三教305",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "成长通识\n[郝鹏程]\n[成长通识-20班-中文]\n[2-16双周][三教305][7-8节]"
+      }
+    },
+    {
+      "course_name": "大学物理（上）（大学物理（上）-12班-双语）",
+      "instructor": "田振粮",
+      "day_of_week": 5,
+      "start_slot": 7,
+      "end_slot": 8,
+      "weeks": "1-16周",
+      "location": "三教106",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "大学物理（上）\n[田振粮]\n[大学物理（上）-12班-双语]\n[1-16周][三教106][7-8节]"
+      }
+    },
+    {
+      "course_name": "SUSTech English III（SUSTech English III-04班-英文）",
+      "instructor": "BeatriceClegg",
+      "day_of_week": 2,
+      "start_slot": 7,
+      "end_slot": 8,
+      "weeks": "1-16周",
+      "location": "一教307",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "SUSTech English III\n[BeatriceClegg]\n[SUSTech English III-04班-英文]\n[1-16周][一教307][7-8节]"
+      }
+    },
+    {
+      "course_name": "生命科学概论（生命科学概论-06班-双语）",
+      "instructor": "戴紫薇",
+      "day_of_week": 3,
+      "start_slot": 7,
+      "end_slot": 8,
+      "weeks": "13-14周",
+      "location": "三教207",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "生命科学概论\n[戴紫薇]\n[生命科学概论-06班-双语]\n[13-14周][三教207][7-8节]\n生命科学概论\n[董涛]\n[生命科学概论-06班-双语]\n[5-6周][三教207][7-8节]\n生命科学概论\n[侯圣陶]\n[生命科学概论-06班-双语]\n[9-10周][三教207][7-8节]\n生命科学概论\n[刘东]\n[生命科学概论-06班-双语]\n[7-8周][三教207][7-8节]\n生命科学概论\n[温子龙]\n[生命科学概论-06班-双语]\n[11-12周][三教207][7-8节]\n生命科学概论\n[吴柘]\n[生命科学概论-06班-双语]\n[15-16周][三教207][7-8节]\n生命科学概论\n[余聪]\n[生命科学概论-06班-双语]\n[3-4周][三教207][7-8节]\n生命科学概论\n[赵燕]\n[生命科学概论-06班-双语]\n[1-2周][三教207][7-8节]"
+      }
+    },
+    {
+      "course_name": "成长通识（成长通识-20班-中文）",
+      "instructor": "郝鹏程",
+      "day_of_week": 4,
+      "start_slot": 7,
+      "end_slot": 8,
+      "weeks": "2-16双周",
+      "location": "三教305",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "成长通识\n[郝鹏程]\n[成长通识-20班-中文]\n[2-16双周][三教305][7-8节]"
+      }
+    },
+    {
+      "course_name": "大学物理（上）（大学物理（上）-12班-双语）",
+      "instructor": "田振粮",
+      "day_of_week": 5,
+      "start_slot": 7,
+      "end_slot": 8,
+      "weeks": "1-16周",
+      "location": "三教106",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "大学物理（上）\n[田振粮]\n[大学物理（上）-12班-双语]\n[1-16周][三教106][7-8节]"
+      }
+    },
+    {
+      "course_name": "写作与交流（写作与交流-18班-中文）",
+      "instructor": "袁博",
+      "day_of_week": 4,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "1-16周",
+      "location": "三教407",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "写作与交流\n[袁博]\n[写作与交流-18班-中文]\n[1-16周][三教407][9-10节]"
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+/HUMAN_PLAN.md
+/.trae/
+/backend/resources/
+/backend/.pytest_cache/
+__pycache__/
+/.idea/
+/.vscode/
+/backend/credentials/*.json
+/.env
+/.env.*
+file.md
+/langchain_ref_docs/
+CLAUDE.md
+*.pptx
+*.docx
+*.xlsx

@@ -1,0 +1,27 @@
+URL: https://sustech.online/service/email
+
+学校使用企业邮箱作为邮件系统，并为每位同学分配形如12010100@mail.sustech.edu.cn的邮箱。电子邮件可以通过网页或客户端收取。
+一般来说，教职员的邮箱后缀为@sustech.edu.cn，同学的邮箱后缀为@mail.sustech.edu.cn，每位同学还可以申请一个带有姓名拼音和入学年份的邮箱别名（如在2020年入学的张三，将可以申请别名为zhangs2020@mail.sustech.edu.cn的邮箱。若需申请姓名+入学年份的别名邮箱，向信息中心发主题问“申请邮箱别名”的邮件，即可申请。
+解决邮箱容量不足的问题
+访问 QQ 企业邮箱登录页https://exmail.qq.com/login，输入邮箱和密码登入。也可通过https://mail.sustech.edu.cn/上方的CAS登录邮箱链接登入，首次登入需要输入密码绑定CAS账户和邮箱。
+登录 QQ 企业邮箱网页版后，可在“设置” --> “提醒服务” --> “QQ 提醒”中绑定 QQ 号码，绑定后可以通过网页邮箱上方工具栏中的“QQ 邮箱 / 企业邮箱”选项切换邮箱。 在“设置” --> “提醒服务” --> “QQ 提醒”中选择“点击 QQ 面板的小信封直接进入企业邮箱”选项并保存后，可以直接通过 QQ 电脑客户端进入网页版企业邮箱。
+假如一位同学的邮箱是12010100@mail.sustech.edu.cn，密码是sustech-manual。
+项目值其他参数用户名12010100@mail.sustech.edu.cn密码sustech-manual邮件服务器（Exchange）ex.exmail.qq.com发件服务器（SMTP）smtp.exmail.qq.com使用SSL，端口号465收件服务器（POP3）pop.exmail.qq.com使用SSL，端口号995收件服务器（IMAP）imap.exmail.qq.com使用SSL，端口号993
+关注“腾讯企业邮箱”公众号，并按提示操作。
+建议使用Exchange方式收件。
+向 iPhone、iPad 或 iPod touch 添加电子邮件帐户
+按照应用提示操作即可。
+在 Outlook for Android 应用中设置电子邮件
+如何在Android系统中使用腾讯企业邮箱Exchange同步服务？
+在 Windows 10 邮件应用中设置电子邮件
+建议使用IMAP方式收件。
+在 Mac 上的“邮件”中添加或移除电子邮件帐户
+在 Mac 上的“邮件”中更改服务器设置
+由于QQ邮箱不支持完整版的Exchange（只支持Exchange Activesync）因此Outlook Mac桌面版不能以Exchange模式添加账户，只能使用IMAP或POP模式添加账户。
+推荐使用Exchange Activesync模式添加。
+向 Outlook 添加电子邮件帐户
+在https://faculty.sustech.edu.cn/寻找教师的个人主页**（页面可能会加载大量图片并消耗流量，请考虑直接从搜索引擎直接进入教师的个人主页）**
+复制教师主页的网址https://faculty.sustech.edu.cn/{faculty_name}/，如姚新老师的主页https://faculty.sustech.edu.cn/xiny/。
+网址的url的path部分{faculty_name}（如xiny）即为相应老师的邮箱前缀，加上@sustech.edu.cn即为老师的邮箱地址（如xiny@sustech.edu.cn）。
+Email 使用指南/浅见
+如何设置IMAP、POP3/SMTP及其SSL加密方式？/腾讯企业邮箱

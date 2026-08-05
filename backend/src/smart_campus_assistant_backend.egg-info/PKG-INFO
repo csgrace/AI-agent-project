@@ -1,0 +1,19 @@
+Metadata-Version: 2.4
+Name: smart-campus-assistant-backend
+Version: 0.1.0
+Summary: Backend for smart campus assistant demo
+Requires-Python: >=3.11
+Requires-Dist: langchain==1.2.13
+Requires-Dist: langchain-core==1.2.23
+Requires-Dist: langchain-openai==1.1.12
+Requires-Dist: pydantic==2.12.5
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: requests>=2.31.0
+Requires-Dist: pyyaml>=6.0.3
+Requires-Dist: todoist-api-python>=3.1.0
+Requires-Dist: urllib3>=2.0.0
+Requires-Dist: fastapi>=0.115.0
+Requires-Dist: uvicorn[standard]>=0.34.0
+Requires-Dist: sse-starlette>=2.0.0
+Provides-Extra: dev
+Requires-Dist: pytest==9.0.2; extra == "dev"

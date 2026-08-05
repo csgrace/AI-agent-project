@@ -1,0 +1,13 @@
+URL: https://daily.sustech.online/2022/08/03/campus-bus-optimization/
+
+在ni1o1老师的帮助下，南科手册的校园巴士实时位置显示功能现新增根据定位自动选择最近的站点和到站时间预测之功能，欢迎前往校园巴士实时位置页面或小程序中体验。
+也欢迎大家关注ni1o1老师的bilibili账户：交通数据小旭学长～
+#南方科技大学#校园巴士
+实时校巴页面现已新增自动判定站点，改进的到站时间预测等功能
+https://daily.sustech.online/2022/08/03/campus-bus-optimization/
+作者
+ni1o1
+发布于
+2022年8月3日
+许可协议
+数说大一下一篇

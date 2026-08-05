@@ -1,0 +1,7 @@
+URL: https://sustech.online/service/sakai
+
+众所周知，Sakai 在校园网环境下访问非常快，通过其传输 或者 分享文件也非常方便，更可免受外网访问速度的限制。
+进入个人空间
+选择上传文件
+编辑访问权限
+访问红框内网址（https://sakai.sustech.edu.cn/x/VgWvyf）即可下载文件。

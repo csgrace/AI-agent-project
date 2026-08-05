@@ -1,0 +1,243 @@
+{
+  "term_label": "2024-秋",
+  "meetings": [
+    {
+      "course_name": "马克思主义基本原理（马克思主义基本原理-04班-中文）",
+      "instructor": "尹玮煜",
+      "day_of_week": 3,
+      "start_slot": 1,
+      "end_slot": 2,
+      "weeks": "1-16周",
+      "location": "一教110",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "马克思主义基本原理\n[尹玮煜]\n[马克思主义基本原理-04班-中文]\n[1-16周][一教110][1-2节]"
+      }
+    },
+    {
+      "course_name": "数字逻辑（数字逻辑-01班-英文）",
+      "instructor": "白雨卉",
+      "day_of_week": 1,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-16周",
+      "location": "一科报告厅",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "数字逻辑\n[白雨卉]\n[数字逻辑-01班-英文]\n[1-16周][一科报告厅][3-4节]"
+      }
+    },
+    {
+      "course_name": "数据结构与算法分析（数据结构与算法分析-01班-英文）",
+      "instructor": "唐博",
+      "day_of_week": 2,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-9,11-16周",
+      "location": "一科报告厅",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "数据结构与算法分析\n[唐博]\n[数据结构与算法分析-01班-英文]\n[1-9,11-16周][一科报告厅][3-4节]\n数据结构与算法分析\n[王维语]\n[数据结构与算法分析-01班-英文]\n[10周][一科报告厅][3-4节]"
+      }
+    },
+    {
+      "course_name": "形势与政策（形势与政策-01班-中文）",
+      "instructor": "杨晗旭",
+      "day_of_week": 3,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-16周",
+      "location": "一教306",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "形势与政策\n[杨晗旭]\n[形势与政策-01班-中文]\n[1-16周][一教306][3-4节]"
+      }
+    },
+    {
+      "course_name": "数字逻辑（数字逻辑-01班-英文-4组）",
+      "instructor": "王薇",
+      "day_of_week": 5,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-16周",
+      "location": "三教510机房",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "数字逻辑\n[王薇]\n[数字逻辑-01班-英文-4组]\n[1-16周][三教510机房][3-4节]"
+      }
+    },
+    {
+      "course_name": "数据结构与算法分析（数据结构与算法分析-01班-英文-2组）",
+      "instructor": "沈昀",
+      "day_of_week": 2,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "1-16周",
+      "location": "三教503机房",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "数据结构与算法分析\n[沈昀]\n[数据结构与算法分析-01班-英文-2组]\n[1-16周][三教503机房][5-6节]"
+      }
+    },
+    {
+      "course_name": "国画实训（国画实训-01班-中文）",
+      "instructor": "周明聪",
+      "day_of_week": 3,
+      "start_slot": 1,
+      "end_slot": 1,
+      "weeks": "周明聪",
+      "location": null,
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "国画实训\n[周明聪]\n[国画实训-01班-中文]\n[1-16周][二教203A艺术中心教室][5-8节]"
+      }
+    },
+    {
+      "course_name": "工程概率统计（工程概率统计-01班-双语）",
+      "instructor": "徐匆",
+      "day_of_week": 5,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "1-15单周",
+      "location": "一教111",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "工程概率统计\n[徐匆]\n[工程概率统计-01班-双语]\n[1-15单周][一教111][5-6节]"
+      }
+    },
+    {
+      "course_name": "数据库原理（数据库原理-01班-英文）",
+      "instructor": "王中秋",
+      "day_of_week": 1,
+      "start_slot": 7,
+      "end_slot": 8,
+      "weeks": "1-16周",
+      "location": "三教206",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "数据库原理\n[王中秋]\n[数据库原理-01班-英文]\n[1-16周][三教206][7-8节]"
+      }
+    },
+    {
+      "course_name": "国画实训（国画实训-01班-中文）",
+      "instructor": "周明聪",
+      "day_of_week": 3,
+      "start_slot": 1,
+      "end_slot": 1,
+      "weeks": "周明聪",
+      "location": null,
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "国画实训\n[周明聪]\n[国画实训-01班-中文]\n[1-16周][二教203A艺术中心教室][5-8节]"
+      }
+    },
+    {
+      "course_name": "体育III（体育III-中文-网球3班）",
+      "instructor": "赵一品",
+      "day_of_week": 5,
+      "start_slot": 7,
+      "end_slot": 8,
+      "weeks": "1-16周",
+      "location": "欣园网球场",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "体育III\n[赵一品]\n[体育III-中文-网球3班]\n[1-16周][欣园网球场][7-8节]"
+      }
+    },
+    {
+      "course_name": "数据库原理（数据库原理-01班-英文-1组）",
+      "instructor": "王中秋",
+      "day_of_week": 1,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "1-16周",
+      "location": "三教503机房",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "数据库原理\n[王中秋]\n[数据库原理-01班-英文-1组]\n[1-16周][三教503机房][9-10节]"
+      }
+    },
+    {
+      "course_name": "中国近现代史纲要（中国近现代史纲要-03班-中文）",
+      "instructor": "王春英",
+      "day_of_week": 2,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "1-16周",
+      "location": "三教107",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "中国近现代史纲要\n[王春英]\n[中国近现代史纲要-03班-中文]\n[1-16周][三教107][9-10节]"
+      }
+    },
+    {
+      "course_name": "工程概率统计（工程概率统计-01班-双语）",
+      "instructor": "徐匆",
+      "day_of_week": 3,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "1-16周",
+      "location": "一教111",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "工程概率统计\n[徐匆]\n[工程概率统计-01班-双语]\n[1-16周][一教111][9-10节]"
+      }
+    },
+    {
+      "course_name": "数据库原理（数据库原理-01班-英文-1组）",
+      "instructor": "王中秋",
+      "day_of_week": 1,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "1-16周",
+      "location": "三教503机房",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "数据库原理\n[王中秋]\n[数据库原理-01班-英文-1组]\n[1-16周][三教503机房][9-10节]"
+      }
+    },
+    {
+      "course_name": "中国近现代史纲要（中国近现代史纲要-03班-中文）",
+      "instructor": "王春英",
+      "day_of_week": 2,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "1-16周",
+      "location": "三教107",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "中国近现代史纲要\n[王春英]\n[中国近现代史纲要-03班-中文]\n[1-16周][三教107][9-10节]"
+      }
+    },
+    {
+      "course_name": "工程概率统计（工程概率统计-01班-双语）",
+      "instructor": "徐匆",
+      "day_of_week": 3,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "1-16周",
+      "location": "一教111",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "工程概率统计\n[徐匆]\n[工程概率统计-01班-双语]\n[1-16周][一教111][9-10节]"
+      }
+    }
+  ]
+}

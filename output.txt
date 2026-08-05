@@ -1,0 +1,26 @@
+﻿64de1aa feat(backend): 瀹炵幇API鏈嶅姟涓庡墠绔氦浜掑姛鑳?M	backend/pyproject.toml
+M	backend/src/agents/agent_runner.py
+A	backend/src/api/__init__.py
+A	backend/src/api/converters.py
+A	backend/src/api/routes/__init__.py
+A	backend/src/api/routes/calendar.py
+A	backend/src/api/routes/chat.py
+A	backend/src/api/schemas.py
+A	backend/src/api/server.py
+A	backend/src/smart_campus_assistant_backend.egg-info/PKG-INFO
+A	backend/src/smart_campus_assistant_backend.egg-info/SOURCES.txt
+A	backend/src/smart_campus_assistant_backend.egg-info/dependency_links.txt
+A	backend/src/smart_campus_assistant_backend.egg-info/requires.txt
+A	backend/src/smart_campus_assistant_backend.egg-info/top_level.txt
+M	backend/src/tools/blackboard_calendar/tool.py
+M	backend/src/tools/blackboard_calendar/utils.py
+M	backend/src/tools/cas_course/__init__.py
+M	backend/src/tools/cas_course/utils.py
+M	backend/src/tools/todoist/todoist_utils.py
+M	backend/src/tools/todoist/utils.py
+M	frontend/package-lock.json
+M	frontend/package.json
+M	frontend/src/App.tsx
+A	frontend/src/api.ts
+M	frontend/src/components/ModernCalendar.tsx
+M	frontend/vite.config.ts

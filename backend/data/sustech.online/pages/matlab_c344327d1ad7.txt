@@ -1,0 +1,8 @@
+URL: https://sustech.online/service/matlab/
+
+用学校邮箱注册MathWorks账号（必须为学校邮箱否则无法使用）注册链接
+若有疑问可以咨询MathWorks客服或者易老师：yiha__at__mail.sustech.edu.cn
+用学校邮箱登录MathWorks
+登录后自动系统自动关联软件许可证，并提供产品多版本的下载链接
+安装时选择MathWorks账户登录即可。
+联系MathWorks支持人员

@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: smart-campus-backend
+    runtime: python
+    region: singapore
+    plan: free
+    pythonVersion: 3.11
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn src.api.server:app --host 0.0.0.0 --port $PORT
+    rootDir: backend

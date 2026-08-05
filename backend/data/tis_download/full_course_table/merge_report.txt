@@ -1,0 +1,458 @@
+======================================================================
+课程表JSON合并工具
+判断重复标准：教学班 + 课程代码 都相同
+======================================================================
+输入目录: D:\E\SUSTECH\grade3\3down\CS\software_engineering\team-project-26spring-26s-22\backend\data\tis_download\full_course_table\json
+输出JSON: D:\E\SUSTECH\grade3\3down\CS\software_engineering\team-project-26spring-26s-22\backend\data\tis_download\full_course_table\all_courses_merged.json
+输出CSV: D:\E\SUSTECH\grade3\3down\CS\software_engineering\team-project-26spring-26s-22\backend\data\tis_download\full_course_table\all_courses_merged.csv
+合并报告: D:\E\SUSTECH\grade3\3down\CS\software_engineering\team-project-26spring-26s-22\backend\data\tis_download\full_course_table\merge_report.txt
+======================================================================
+找到 274 个JSON文件
+总共加载 1164 条课程记录
+
+======================================================================
+发现重复的课程（教学班 + 课程代码 都相同）:
+======================================================================
+
+📚 重复课程:
+   教学班: 大学地球科学.06班-双语
+   课程代码: EOE111
+   出现次数: 2 次
+   第一次出现: page_104.json
+     课程名称: 大学地球科学 College Earth Science
+     教师: 周祐民
+   重复出现: page_105.json
+     课程名称: 大学地球科学 College Earth Science
+     教师: 周佑民
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 计算生物学-01班-双语-1组
+   课程代码: BIO309
+   出现次数: 2 次
+   第一次出现: page_12.json
+     课程名称: 计算生物学Computational Biology
+     教师: 梁征宇
+   重复出现: page_12.json
+     课程名称: 计算生物学
+     教师: 梁征宇
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 心理学-01班-中文
+   课程代码: GE1221
+   出现次数: 2 次
+   第一次出现: page_123.json
+     课程名称: 心理学 Introduction to Psychology
+     教师: 孙志凤
+   重复出现: page_124.json
+     课程名称: 心理学 Introduction to Psychology
+     教师: 孙志凤
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 体育IV-中文-搏击2班
+   课程代码: GE232
+   出现次数: 2 次
+   第一次出现: page_132.json
+     课程名称: 体育IV
+     教师: 卢阳
+   重复出现: page_133.json
+     课程名称: Physical Education IV
+     教师: 赖莎
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 体育IV-中文-体育舞蹈1班
+   课程代码: GE232
+   出现次数: 2 次
+   第一次出现: page_132.json
+     课程名称: 体育IV
+     教师: 赖莎
+   重复出现: page_133.json
+     课程名称: Physical Education IV
+     教师: 沈莉-外聘
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 理论力学II-01班-双语
+   课程代码: MAE204
+   出现次数: 2 次
+   第一次出现: page_187.json
+     课程名称: 理论力学II
+     教师: 袁鸿雁
+   重复出现: page_188.json
+     课程名称: 理论力学II
+     教师: 谭峻书
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 生物医学成像-01班-英文
+   课程代码: BME5006
+   出现次数: 2 次
+   第一次出现: page_19.json
+     课程名称: 生物医学成像 Biomedical Imaging
+     教师: 奚磊
+   重复出现: page_20.json
+     课程名称: 生物医学成像 Biomedical Imaging
+     教师: 奚磊
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 有机与生物材料-01班-英文
+   课程代码: MSE5010
+   出现次数: 2 次
+   第一次出现: page_229.json
+     课程名称: 有机与生物材料 Organic and Biological Materials
+     教师: WANG HSINGLIN(王湘麟)
+   重复出现: page_230.json
+     课程名称: 有机与生物材料 Organic and Biological Materials
+     教师: WANG HSINGLIN(王湘麟)
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 量子材料-01班-双语
+   课程代码: PHY360
+   出现次数: 2 次
+   第一次出现: page_246.json
+     课程名称: 量子材料 Quantum Materials
+     教师: 陈卓昱
+   重复出现: page_247.json
+     课程名称: 量子材料 Quantum Materials
+     教师: 陈卓旻
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 毕业设计-01班-双语-后置名单
+   课程代码: SDM401
+   出现次数: 2 次
+   第一次出现: page_255.json
+     课程名称: 毕业设计 Capstone
+     教师: 熊异 王振坤 白紫千 李洪飞 郑晓晨 陈园
+   重复出现: page_256.json
+     课程名称: 毕业设计 Capstone
+     教师: 熊异 王振坤 白紫千 李洪飞 郑晓晨 陈园
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 生物传感技术及应用-01班-英文
+   课程代码: SME5021
+   出现次数: 2 次
+   第一次出现: page_266.json
+     课程名称: 生物传感技术及应用 Biosensing Technology and Applications
+     教师: 林苑青
+   重复出现: page_267.json
+     课程名称: 生物传感技术及应用 Biosensing Technology and Applications
+     教师: 林苑菁
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 欧洲语言与文化-02班-英文
+   课程代码: CLE067
+   出现次数: 2 次
+   第一次出现: page_56.json
+     课程名称: 欧洲语言与文化 European Languages and Cultures
+     教师: MIGUEL ANGEL MARQUEZ MARTINEZ
+   重复出现: page_57.json
+     课程名称: 欧洲语言与文化 European Languages and Cultures
+     教师: MIGUEL ANGEL MARQUEZ MARTINEZ
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 专业英文词汇精讲-01班-英文
+   课程代码: CLE069
+   出现次数: 2 次
+   第一次出现: page_56.json
+     课程名称: 专业英文词汇精讲 Subject Vocabulary
+     教师: DANIEL LIVESEY BILLINGTON
+   重复出现: page_57.json
+     课程名称: 专业英文词汇精讲 Subject Vocabulary
+     教师: DANIEL LIVESEY BILLINGTON
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 专业英文词汇精讲-02班-英文
+   课程代码: CLE069
+   出现次数: 2 次
+   第一次出现: page_56.json
+     课程名称: 专业英文词汇精讲 Subject Vocabulary
+     教师: DANIEL LIVESEY BILLINGTON
+   重复出现: page_57.json
+     课程名称: 专业英文词汇精讲 Subject Vocabulary
+     教师: DANIEL LIVESEY BILLINGTON
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 网球-01班-中文
+   课程代码: CPE5016
+   出现次数: 2 次
+   第一次出现: page_60.json
+     课程名称: 网球 Tennis
+     教师: 赵一品
+   重复出现: page_61.json
+     课程名称: 网球 Tennis
+     教师: 赵一品
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 数理逻辑导论-01班-英文
+   课程代码: CS104
+   出现次数: 2 次
+   第一次出现: page_60.json
+     课程名称: 数理逻辑导论 Introduction to Mathematical Logic
+     教师: 陶伊达
+   重复出现: page_61.json
+     课程名称: 数理逻辑导论 Introduction to Mathematical Logic
+     教师: 陶伊达
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 计算机组成原理-02班-双语-1组
+   课程代码: CS202
+   出现次数: 2 次
+   第一次出现: page_65.json
+     课程名称: 计算机组成原理 Computer Organization
+     教师: 
+   重复出现: page_66.json
+     课程名称: 计算机组成原理 Computer Organization
+     教师: YUHUI BAI (白雨卉) 张进 朱悦铭
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 数据挖掘-01班-英文
+   课程代码: CS306
+   出现次数: 2 次
+   第一次出现: page_75.json
+     课程名称: 数据挖掘 Data Mining
+     教师: 郑天越
+   重复出现: page_76.json
+     课程名称: 数据挖掘 Data Mining
+     教师: 郑天越
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 数据库原理-01班-英文
+   课程代码: CS307
+   出现次数: 2 次
+   第一次出现: page_75.json
+     课程名称: 数据库原理 Principles of Database Systems
+     教师: 王中秋
+   重复出现: page_76.json
+     课程名称: 数据库原理 Principles of Database Systems
+     教师: 王中秋
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 细胞生物学-01班-双语
+   课程代码: BIO206
+   出现次数: 2 次
+   第一次出现: page_7.json
+     课程名称: 细胞生物学 Cell Biology
+     教师: 邓怿
+   重复出现: page_8.json
+     课程名称: 细胞生物学 Cell Biology
+     教师: 
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 植物生理学-01班-双语
+   课程代码: BIO207-15
+   出现次数: 2 次
+   第一次出现: page_7.json
+     课程名称: 植物生理学 Plant Physiology
+     教师: 梁建生
+   重复出现: page_8.json
+     课程名称: 植物生理学 Plant Physiology
+     教师: 梁建生
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 生物统计学-01班-双语
+   课程代码: BIO210
+   出现次数: 2 次
+   第一次出现: page_7.json
+     课程名称: 生物统计学 Biostatistics
+     教师: 陈曦
+   重复出现: page_8.json
+     课程名称: 生物统计学 Biostatistics
+     教师: 陈曦
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 多媒体信息处理-01班-双语
+   课程代码: CS330
+   出现次数: 2 次
+   第一次出现: page_79.json
+     课程名称: 多媒体信息处理 Multimedia Information Processing
+     教师: LIU JIANG (刘江)
+   重复出现: page_80.json
+     课程名称: 多媒体信息处理 Multimedia Information Processing
+     教师: LIU JIANG (刘江)
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 信息检索-01班-双语
+   课程代码: CS332
+   出现次数: 2 次
+   第一次出现: page_79.json
+     课程名称: 信息检索 Information Retrieval
+     教师: 宋雪萌
+   重复出现: page_80.json
+     课程名称: 信息检索 Information Retrieval
+     教师: 宋雪萌
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 计算理论导论-01班-英文
+   课程代码: CS338
+   出现次数: 2 次
+   第一次出现: page_79.json
+     课程名称: 计算理论导论 Introduction to Theory of Computation
+     教师: PIETRO SIMONE OLIVETO
+   重复出现: page_80.json
+     课程名称: 计算理论导论 Introduction to Theory of Computation
+     教师: PIETRO SIMONE OLIVETO
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 计算伦理学-01班-双语
+   课程代码: CS340
+   出现次数: 2 次
+   第一次出现: page_79.json
+     课程名称: 计算伦理学 Computational Ethics
+     教师: 危学涛
+   重复出现: page_80.json
+     课程名称: 计算伦理学 Computational Ethics
+     教师: 危学涛
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 深度学习前沿-01班-英文-上机地点三教501-502
+   课程代码: CSE5023
+   出现次数: 2 次
+   第一次出现: page_82.json
+     课程名称: 深度学习前沿 Recent Advances in Deep Learning
+     教师: 张建国
+   重复出现: page_83.json
+     课程名称: 深度学习前沿 Recent Advances in Deep Learning
+     教师: 张建国
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 高级数据库系统-01班-英文
+   课程代码: CSE5024
+   出现次数: 2 次
+   第一次出现: page_82.json
+     课程名称: 高级数据库系统 Advanced Database System
+     教师: 唐博
+   重复出现: page_83.json
+     课程名称: 高级数据库系统 Advanced Database System
+     教师: 唐博
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 遗传学-01班-双语
+   课程代码: BIO301
+   出现次数: 2 次
+   第一次出现: page_10.json
+     课程名称: 遗传学 Genetics
+     教师: 黄鸿达，余化鹏
+   重复出现: page_9.json
+     课程名称: 遗传学 Genetics
+     教师: 黄鸿达 余化鹏
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 高级宏观经济学-01班-英文
+   课程代码: EBA7008
+   出现次数: 2 次
+   第一次出现: page_89.json
+     课程名称: 高级宏观经济学 Advanced Macro economics
+     教师: 王赫
+   重复出现: page_90.json
+     课程名称: 高级宏观经济学 Advanced Macro economics
+     教师: 王赫
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 数字电路实验-01班-英文
+   课程代码: EE202-17L
+   出现次数: 2 次
+   第一次出现: page_91.json
+     课程名称: 数字电路实验 Digital Circuits Laboratory
+     教师: 王小静
+   重复出现: page_92.json
+     课程名称: 数字电路实验 Digital Circuits Laboratory
+     教师: 王小静
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+📚 重复课程:
+   教学班: 电子科学创新实验I-02班-中文
+   课程代码: EE317
+   出现次数: 2 次
+   第一次出现: page_96.json
+     课程名称: 电子科学创新实验I Advanced Electronic Science Experiment I
+     教师: 徐琳琳 王小静
+   重复出现: page_97.json
+     课程名称: 电子科学创新实验I Advanced Electronic Science Experiment I
+     教师: 徐琳琳 王小静
+   - *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *- *
+
+详细重复报告已保存至: D:\E\SUSTECH\grade3\3down\CS\software_engineering\team-project-26spring-26s-22\backend\data\tis_download\full_course_table\duplicate_teaching_classes.txt
+
+去重前: 1164 条记录
+去重后: 1132 条记录
+去重数量: 32 条
+
+✅ JSON已保存: D:\E\SUSTECH\grade3\3down\CS\software_engineering\team-project-26spring-26s-22\backend\data\tis_download\full_course_table\all_courses_merged.json
+   文件大小: 762.88 KB
+✅ CSV已保存: D:\E\SUSTECH\grade3\3down\CS\software_engineering\team-project-26spring-26s-22\backend\data\tis_download\full_course_table\all_courses_merged.csv
+   记录数: 1132
+
+======================================================================
+统计信息
+======================================================================
+
+📊 按开课院系统计（前10名）:
+   语言中心: 122 门课程
+   体育中心: 96 门课程
+   医学院: 68 门课程
+   计算机科学与工程系: 68 门课程
+   马克思主义学院: 60 门课程
+   数学系: 58 门课程
+   电子与电气工程系: 55 门课程
+   生物系: 54 门课程
+   化学系: 49 门课程
+   物理系: 49 门课程
+
+📊 按课程类别统计:
+   通识必修课: 342 门课程
+   专业选修课: 213 门课程
+   专业核心课: 170 门课程
+   专业基础课: 153 门课程
+   专业必修课: 77 门课程
+   实践: 37 门课程
+   专业导论类: 33 门课程
+   外语类: 28 门课程
+   社科类: 27 门课程
+   美育类: 25 门课程
+   人文类: 13 门课程
+   培养环节: 6 门课程
+   通识选修课: 4 门课程
+   : 4 门课程
+
+📊 按授课语言统计:
+   双语: 402 门课程
+   中文: 372 门课程
+   英文: 355 门课程
+   : 3 门课程
+
+📚 总课程数（去重后）: 1132
+
+======================================================================
+合并完成！
+JSON文件: D:\E\SUSTECH\grade3\3down\CS\software_engineering\team-project-26spring-26s-22\backend\data\tis_download\full_course_table\all_courses_merged.json
+CSV文件: D:\E\SUSTECH\grade3\3down\CS\software_engineering\team-project-26spring-26s-22\backend\data\tis_download\full_course_table\all_courses_merged.csv
+重复报告: D:\E\SUSTECH\grade3\3down\CS\software_engineering\team-project-26spring-26s-22\backend\data\tis_download\full_course_table\duplicate_teaching_classes.txt
+合并报告: D:\E\SUSTECH\grade3\3down\CS\software_engineering\team-project-26spring-26s-22\backend\data\tis_download\full_course_table\merge_report.txt
+======================================================================

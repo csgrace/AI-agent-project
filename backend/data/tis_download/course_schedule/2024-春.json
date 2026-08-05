@@ -1,0 +1,257 @@
+{
+  "term_label": "2024-春",
+  "meetings": [
+    {
+      "course_name": "高等数学（下）（高等数学（下）-09班-双语）",
+      "instructor": "李觉先",
+      "day_of_week": 1,
+      "start_slot": 1,
+      "end_slot": 2,
+      "weeks": "1-16周",
+      "location": "三教108",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "高等数学（下）\n[李觉先]\n[高等数学（下）-09班-双语]\n[1-16周][三教108][1-2节]"
+      }
+    },
+    {
+      "course_name": "习近平新时代中国特色社会主义思想概论（习近平新时代中国特色社会主义思想概论-05班-中文）",
+      "instructor": "高玉林",
+      "day_of_week": 2,
+      "start_slot": 1,
+      "end_slot": 2,
+      "weeks": "1-16周",
+      "location": "商学院104",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "习近平新时代中国特色社会主义思想概论\n[高玉林]\n[习近平新时代中国特色社会主义思想概论-05班-中文]\n[1-16周][商学院104][1-2节]"
+      }
+    },
+    {
+      "course_name": "大学化学（大学化学-09班-双语）",
+      "instructor": "吴振禹",
+      "day_of_week": 3,
+      "start_slot": 1,
+      "end_slot": 2,
+      "weeks": "1-15单周",
+      "location": "三教104",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "大学化学\n[吴振禹]\n[大学化学-09班-双语]\n[1-15单周][三教104][1-2节]"
+      }
+    },
+    {
+      "course_name": "体育II（体育II-中文-防身与格斗2班）",
+      "instructor": "沈莉-外聘",
+      "day_of_week": 5,
+      "start_slot": 1,
+      "end_slot": 2,
+      "weeks": "1-16周",
+      "location": "风雨操场搏击馆",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "体育II\n[沈莉-外聘]\n[体育II-中文-防身与格斗2班]\n[1-16周][风雨操场搏击馆][1-2节]"
+      }
+    },
+    {
+      "course_name": "大学化学（大学化学-09班-双语）",
+      "instructor": "吴振禹",
+      "day_of_week": 1,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-16周",
+      "location": "三教104",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "大学化学\n[吴振禹]\n[大学化学-09班-双语]\n[1-16周][三教104][3-4节]"
+      }
+    },
+    {
+      "course_name": "计算机程序设计基础（计算机程序设计基础-01班-双语）",
+      "instructor": "张煜群",
+      "day_of_week": 2,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-8,10-16周",
+      "location": "一教107",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "计算机程序设计基础\n[张煜群]\n[计算机程序设计基础-01班-双语]\n[1-8,10-16周][一教107][3-4节]"
+      }
+    },
+    {
+      "course_name": "高等数学（下）（高等数学（下）-09班-双语）",
+      "instructor": "李觉先",
+      "day_of_week": 3,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-16周",
+      "location": "三教108",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "高等数学（下）\n[李觉先]\n[高等数学（下）-09班-双语]\n[1-16周][三教108][3-4节]"
+      }
+    },
+    {
+      "course_name": "计算机程序设计基础（计算机程序设计基础-01班-双语-2组）",
+      "instructor": "沈昀",
+      "day_of_week": 4,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-16周",
+      "location": "三教501机房",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "计算机程序设计基础\n[沈昀]\n[计算机程序设计基础-01班-双语-2组]\n[1-16周][三教501机房][3-4节]"
+      }
+    },
+    {
+      "course_name": "EAP（EAP-22班-英文）",
+      "instructor": "石潇",
+      "day_of_week": 5,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-16周",
+      "location": "一教509",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "EAP\n[石潇]\n[EAP-22班-英文]\n[1-16周][一教509][3-4节]"
+      }
+    },
+    {
+      "course_name": "计算机程序设计基础（计算机程序设计基础-01班-双语）",
+      "instructor": "张煜群",
+      "day_of_week": 7,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "8周",
+      "location": "一教107",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "计算机程序设计基础\n[张煜群]\n[计算机程序设计基础-01班-双语]\n[8周][一教107][3-4节]"
+      }
+    },
+    {
+      "course_name": "毛泽东思想和中国特色社会主义理论体系概论（毛泽东思想和中国特色社会主义理论体系概论-02班-中文）",
+      "instructor": "尹玮煜",
+      "day_of_week": 1,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "10周",
+      "location": "一教111",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "毛泽东思想和中国特色社会主义理论体系概论\n[尹玮煜]\n[毛泽东思想和中国特色社会主义理论体系概论-02班-中文]\n[10周][一教111][5-6节]\n毛泽东思想和中国特色社会主义理论体系概论\n[滕明政]\n[毛泽东思想和中国特色社会主义理论体系概论-02班-中文]\n[1-9,11-16周][一教111][5-6节]"
+      }
+    },
+    {
+      "course_name": "基础物理实验（基础物理实验-03班-实验课每次课都算期末成绩，且不能补课-双语）",
+      "instructor": "陈佶",
+      "day_of_week": 2,
+      "start_slot": 5,
+      "end_slot": 8,
+      "weeks": "1-2周",
+      "location": "理学院CS1142报告厅",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "基础物理实验\n[陈佶]\n[基础物理实验-03班-实验课每次课都算期末成绩，且不能补课-双语]\n[1-2周][理学院CS1142报告厅][5-8节]\n基础物理实验\n[杨珺,张欢,曾孝奇,邵明珍,王才林,徐婷婷,张贤高,邓冬梅,陈佶,王晓峰]\n[基础物理实验-03班-实验课每次课都算期末成绩，且不能补课-双语]\n[3-16周]\n[理学院P4116实验室][5-8节]"
+      }
+    },
+    {
+      "course_name": "大学物理（下）（大学物理（下）-07班-双语）",
+      "instructor": "陈远珍",
+      "day_of_week": 5,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "1,3-16周",
+      "location": "三教108",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "大学物理（下）\n[陈远珍]\n[大学物理（下）-07班-双语]\n[1,3-16周][三教108][5-6节]\n大学物理（下）\n[王善民]\n[大学物理（下）-07班-双语]\n[2周][三教108][5-6节]"
+      }
+    },
+    {
+      "course_name": "基础物理实验（基础物理实验-03班-实验课每次课都算期末成绩，且不能补课-双语）",
+      "instructor": "陈佶",
+      "day_of_week": 2,
+      "start_slot": 5,
+      "end_slot": 8,
+      "weeks": "1-2周",
+      "location": "理学院CS1142报告厅",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "基础物理实验\n[陈佶]\n[基础物理实验-03班-实验课每次课都算期末成绩，且不能补课-双语]\n[1-2周][理学院CS1142报告厅][5-8节]\n基础物理实验\n[杨珺,张欢,曾孝奇,邵明珍,王才林,徐婷婷,张贤高,邓冬梅,陈佶,王晓峰]\n[基础物理实验-03班-实验课每次课都算期末成绩，且不能补课-双语]\n[3-16周]\n[理学院P4116实验室][5-8节]"
+      }
+    },
+    {
+      "course_name": "大学物理（下）（大学物理（下）-07班-双语）",
+      "instructor": "陈远珍",
+      "day_of_week": 3,
+      "start_slot": 7,
+      "end_slot": 8,
+      "weeks": "1-16周",
+      "location": "三教108",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "大学物理（下）\n[陈远珍]\n[大学物理（下）-07班-双语]\n[1-16周][三教108][7-8节]"
+      }
+    },
+    {
+      "course_name": "基础物理实验（基础物理实验-03班-实验课每次课都算期末成绩，且不能补课-双语）",
+      "instructor": "陈佶",
+      "day_of_week": 2,
+      "start_slot": 5,
+      "end_slot": 8,
+      "weeks": "1-2周",
+      "location": "理学院CS1142报告厅",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "基础物理实验\n[陈佶]\n[基础物理实验-03班-实验课每次课都算期末成绩，且不能补课-双语]\n[1-2周][理学院CS1142报告厅][5-8节]\n基础物理实验\n[杨珺,张欢,曾孝奇,邵明珍,王才林,徐婷婷,张贤高,邓冬梅,陈佶,王晓峰]\n[基础物理实验-03班-实验课每次课都算期末成绩，且不能补课-双语]\n[3-16周]\n[理学院P4116实验室][5-8节]"
+      }
+    },
+    {
+      "course_name": "大学物理（下）（大学物理（下）-07班-双语）",
+      "instructor": "陈远珍",
+      "day_of_week": 3,
+      "start_slot": 7,
+      "end_slot": 8,
+      "weeks": "1-16周",
+      "location": "三教108",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "大学物理（下）\n[陈远珍]\n[大学物理（下）-07班-双语]\n[1-16周][三教108][7-8节]"
+      }
+    },
+    {
+      "course_name": "毛泽东思想和中国特色社会主义理论体系概论（毛泽东思想和中国特色社会主义理论体系概论-02班-中文）",
+      "instructor": "高玉林",
+      "day_of_week": 3,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "10周",
+      "location": "一教111",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "毛泽东思想和中国特色社会主义理论体系概论\n[高玉林]\n[毛泽东思想和中国特色社会主义理论体系概论-02班-中文]\n[10周][一教111][9-10节]\n毛泽东思想和中国特色社会主义理论体系概论\n[滕明政]\n[毛泽东思想和中国特色社会主义理论体系概论-02班-中文]\n[2-8双,12-16双周][一教111][9-10节]"
+      }
+    }
+  ]
+}

@@ -1,0 +1,243 @@
+{
+  "term_label": "2025-秋",
+  "meetings": [
+    {
+      "course_name": "伊斯兰艺术与建筑（伊斯兰艺术与建筑-01班-中文）",
+      "instructor": "钱艾琳",
+      "day_of_week": 4,
+      "start_slot": 1,
+      "end_slot": 2,
+      "weeks": "1-16周",
+      "location": "一教327",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "伊斯兰艺术与建筑\n[钱艾琳]\n[伊斯兰艺术与建筑-01班-中文]\n[1-16周][一教327][1-2节]"
+      }
+    },
+    {
+      "course_name": "计算机系统设计及应用A（计算机系统设计及应用A-01班-英文）",
+      "instructor": "陶伊达",
+      "day_of_week": 1,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-16周",
+      "location": "商学院103",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "计算机系统设计及应用A\n[陶伊达]\n[计算机系统设计及应用A-01班-英文]\n[1-16周][商学院103][3-4节]"
+      }
+    },
+    {
+      "course_name": "计算机网络（计算机网络-01班-英文-4组）",
+      "instructor": "唐茗",
+      "day_of_week": 2,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-16周",
+      "location": "三教504机房",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "计算机网络\n[唐茗]\n[计算机网络-01班-英文-4组]\n[1-16周][三教504机房][3-4节]"
+      }
+    },
+    {
+      "course_name": "人工智能（人工智能-01班-英文）",
+      "instructor": "郑明凯",
+      "day_of_week": 3,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-16周",
+      "location": "商学院102",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "人工智能\n[郑明凯]\n[人工智能-01班-英文]\n[1-16周][商学院102][3-4节]"
+      }
+    },
+    {
+      "course_name": "创业管理（创业管理-01班-中文）",
+      "instructor": "王捷",
+      "day_of_week": 5,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "1-7,9-16周",
+      "location": "一教110",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "创业管理\n[王捷]\n[创业管理-01班-中文]\n[1-7,9-16周][一教110][3-4节]"
+      }
+    },
+    {
+      "course_name": "创业管理（创业管理-01班-中文）",
+      "instructor": "王捷",
+      "day_of_week": 6,
+      "start_slot": 3,
+      "end_slot": 4,
+      "weeks": "16周",
+      "location": "一教110",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "创业管理\n[王捷]\n[创业管理-01班-中文]\n[16周][一教110][3-4节]"
+      }
+    },
+    {
+      "course_name": "计算机系统设计及应用A（计算机系统设计及应用A-01班-英文-1组）",
+      "instructor": "陶伊达",
+      "day_of_week": 1,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "1-16周",
+      "location": "三教501机房",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "计算机系统设计及应用A\n[陶伊达]\n[计算机系统设计及应用A-01班-英文-1组]\n[1-16周][三教501机房][5-6节]"
+      }
+    },
+    {
+      "course_name": "中国哲学导论（中国哲学导论-01班-中文）",
+      "instructor": "张大伟",
+      "day_of_week": 2,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "1-16周",
+      "location": "一教427",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "中国哲学导论\n[张大伟]\n[中国哲学导论-01班-中文]\n[1-16周][一教427][5-6节]"
+      }
+    },
+    {
+      "course_name": "人工智能（人工智能-01班-英文-1组）",
+      "instructor": "郑明凯",
+      "day_of_week": 3,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "1-16周",
+      "location": "三教505机房",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "人工智能\n[郑明凯]\n[人工智能-01班-英文-1组]\n[1-16周][三教505机房][5-6节]"
+      }
+    },
+    {
+      "course_name": "极地探索（极地探索-01班-双语）",
+      "instructor": "李斐",
+      "day_of_week": 5,
+      "start_slot": 5,
+      "end_slot": 6,
+      "weeks": "1-16周",
+      "location": "三教205",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "极地探索\n[李斐]\n[极地探索-01班-双语]\n[1-16周][三教205][5-6节]"
+      }
+    },
+    {
+      "course_name": "计算机网络（计算机网络-01班-英文）",
+      "instructor": "唐茗",
+      "day_of_week": 1,
+      "start_slot": 7,
+      "end_slot": 8,
+      "weeks": "1-16周",
+      "location": "一教107",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "计算机网络\n[唐茗]\n[计算机网络-01班-英文]\n[1-16周][一教107][7-8节]"
+      }
+    },
+    {
+      "course_name": "体育Ⅴ（体育Ⅴ-中文-攀岩1班）",
+      "instructor": "罗林斯特",
+      "day_of_week": 2,
+      "start_slot": 7,
+      "end_slot": 8,
+      "weeks": "1-16周",
+      "location": "欣园军事障碍场",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "体育Ⅴ\n[罗林斯特]\n[体育Ⅴ-中文-攀岩1班]\n[1-16周][欣园军事障碍场][7-8节]"
+      }
+    },
+    {
+      "course_name": "计算机科学与技术前沿讲座 IV（计算机科学与技术前沿讲座 IV-01班-双语）",
+      "instructor": "唐茗",
+      "day_of_week": 5,
+      "start_slot": 7,
+      "end_slot": 8,
+      "weeks": "2-16双周",
+      "location": "三教107",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "计算机科学与技术前沿讲座 IV\n[唐茗]\n[计算机科学与技术前沿讲座 IV-01班-双语]\n[2-16双周][三教107][7-8节]"
+      }
+    },
+    {
+      "course_name": "集成电路概论（集成电路概论-01班-双语）",
+      "instructor": "余浩",
+      "day_of_week": 3,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "1-16周",
+      "location": "三教107",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "集成电路概论\n[余浩]\n[集成电路概论-01班-双语]\n[1-16周][三教107][9-10节]"
+      }
+    },
+    {
+      "course_name": "创新实践I（创新实践I-01班-双语）",
+      "instructor": "郑天越",
+      "day_of_week": 6,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "1-16周",
+      "location": "无地点",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "创新实践I\n[郑天越]\n[创新实践I-01班-双语]\n[1-16周][无地点][9-10节]"
+      }
+    },
+    {
+      "course_name": "集成电路概论（集成电路概论-01班-双语）",
+      "instructor": "余浩",
+      "day_of_week": 3,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "1-16周",
+      "location": "三教107",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "集成电路概论\n[余浩]\n[集成电路概论-01班-双语]\n[1-16周][三教107][9-10节]"
+      }
+    },
+    {
+      "course_name": "创新实践I（创新实践I-01班-双语）",
+      "instructor": "郑天越",
+      "day_of_week": 6,
+      "start_slot": 9,
+      "end_slot": 10,
+      "weeks": "1-16周",
+      "location": "无地点",
+      "course_id": null,
+      "credits": null,
+      "metadata": {
+        "raw": "创新实践I\n[郑天越]\n[创新实践I-01班-双语]\n[1-16周][无地点][9-10节]"
+      }
+    }
+  ]
+}

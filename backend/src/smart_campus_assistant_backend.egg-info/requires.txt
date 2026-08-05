@@ -1,0 +1,15 @@
+langchain==1.2.13
+langchain-core==1.2.23
+langchain-openai==1.1.12
+pydantic==2.12.5
+python-dotenv>=1.0.0
+requests>=2.31.0
+pyyaml>=6.0.3
+todoist-api-python>=3.1.0
+urllib3>=2.0.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+sse-starlette>=2.0.0
+
+[dev]
+pytest==9.0.2
