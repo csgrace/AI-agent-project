@@ -452,7 +452,7 @@ def fetch_completed_courses(refresh: bool = False, major: str = "") -> list[Comp
 def fetch_course_offerings(
     term_id: str,
 ) -> list[dict[str, Any]]:
-    """从课程专用向量索引中检索课程 offerings"""
+    """从 PostgreSQL 课程向量索引中检索课程 offerings"""
     try:
         import sys
 
@@ -461,52 +461,11 @@ def fetch_course_offerings(
             sys.path.insert(0, str(backend_root))
 
         from src.rag_pipeline.vector_store import VectorStore
-        from src.rag_pipeline.embeddings import SentenceTransformerEmbeddings
-        from src.rag_pipeline.models import ChunkRecord
-        import faiss
 
-        storage_dir = backend_root / "storage"
-        chunks_path = storage_dir / "course_kb_chunks.json"
-        faiss_path = storage_dir / "course_kb_index.faiss"
-
-        if not chunks_path.exists() or not faiss_path.exists():
-            print("[TIS] 课程专用索引不存在，请先运行: python -m src.ingestion.index_course_knowledge_base")
+        vector_store = VectorStore()
+        if not vector_store._index_ready:
+            print("[TIS] 课程索引不可用，请先运行: python -m src.ingestion.index_course_knowledge_base")
             return []
-
-        with open(chunks_path, "r", encoding="utf-8") as f:
-            chunks_data = json.load(f)
-
-        chunks: list[ChunkRecord] = []
-        for chunk_data in chunks_data:
-            if not isinstance(chunk_data, dict):
-                continue
-            chunks.append(ChunkRecord(
-                source_name=chunk_data["source_name"],
-                source_path=chunk_data["source_path"],
-                chunk_id=chunk_data["chunk_id"],
-                text=chunk_data["text"],
-                start_char=chunk_data.get("start_char", 0),
-                end_char=chunk_data.get("end_char", 0),
-                page_count=chunk_data.get("page_count", 0),
-            ))
-
-        embeddings = SentenceTransformerEmbeddings()
-        index = faiss.read_index(str(faiss_path))
-
-        test_emb = embeddings.encode(["test"])
-        if test_emb.ndim == 1:
-            test_emb = test_emb.reshape(1, -1)
-        if test_emb.shape[1] != index.d:
-            print(
-                f"[TIS] Embedding dimension mismatch "
-                f"(index={index.d}, model={test_emb.shape[1]}). "
-                f"Rebuild with: python src\\ingestion\\index_course_knowledge_base.py"
-            )
-            return []
-
-        vector_store = VectorStore(embeddings=embeddings)
-        vector_store.index = index
-        vector_store.chunks = chunks
 
         query = f"{term_id} 课程 开课 教学班 教师 地点 周次 节次"
         results = vector_store.search(query, k=30)
@@ -517,7 +476,7 @@ def fetch_course_offerings(
             if course_info and course_info.get("course_name"):
                 offerings.append(course_info)
 
-        print(f"[TIS] 从课程索引检索到 {len(offerings)} 门课程")
+        print(f"[TIS] 从 PG 向量索引检索到 {len(offerings)} 门课程")
         return offerings
     except Exception as e:
         import traceback

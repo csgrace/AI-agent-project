@@ -7,10 +7,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Generator, Optional
 
-import faiss
-
 from ...rag_pipeline.llm_service import LLMService
-from ...rag_pipeline.models import AnswerResult, ChunkRecord, SearchResult, coerce_chunk
+from ...rag_pipeline.models import AnswerResult, ChunkRecord, SearchResult
 from ...rag_pipeline.prompt import (
     build_answer_system_prompt,
     build_clarification_prompt,
@@ -21,7 +19,6 @@ from ...rag_pipeline.vector_store import VectorStore
 BASE_DIR = Path(__file__).resolve().parents[3]
 STORAGE_DIR = BASE_DIR / "storage"
 CHUNKS_PATH = STORAGE_DIR / "chunks.json"
-FAISS_PATH = STORAGE_DIR / "index.faiss"
 
 
 class QAService:
@@ -33,36 +30,18 @@ class QAService:
         self.load_index()
 
     def load_index(self) -> bool:
-        """Load persisted index from disk.  Validates embedding dimension matches."""
-        if not CHUNKS_PATH.exists():
-            return False
-
+        """Load persisted index from PostgreSQL."""
         try:
-            with open(CHUNKS_PATH, "r", encoding="utf-8") as f:
-                chunks_data = json.load(f)
-            self.chunks = [coerce_chunk(c) for c in chunks_data]
-            self.vector_store.chunks = self.chunks
-
-            if FAISS_PATH.exists() and faiss is not None:
-                stored_index = faiss.read_index(str(FAISS_PATH))
-                test_emb = self.vector_store.embeddings.encode(["test"])
-                if test_emb.ndim == 1:
-                    test_emb = test_emb.reshape(1, -1)
-                if test_emb.shape[1] != stored_index.d:
-                    print(
-                        f"QA Service: Embedding dimension mismatch "
-                        f"(index={stored_index.d}, model={test_emb.shape[1]}). "
-                        f"Rebuild with: python src\\ingestion\\index_documents.py --force"
-                    )
-                    self._index_ready = False
-                    return False
-                self.vector_store.index = stored_index
-                self._index_ready = True
-                print("QA Service: Index loaded successfully.")
-                return True
+            self._index_ready = self.vector_store.load_index()
+            if self._index_ready:
+                self.chunks = self.vector_store.chunks
+                print(f"QA Service: {len(self.chunks)} chunks ready.")
+            else:
+                print("QA Service: No index found. Run index_documents.py first.")
+            return self._index_ready
         except Exception as e:
             print(f"QA Service: Load failed: {e}")
-        return False
+            return False
 
     def search(
         self,

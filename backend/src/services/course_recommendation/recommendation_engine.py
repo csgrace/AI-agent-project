@@ -1135,20 +1135,84 @@ def plan_schedule_with_llm(
     postponed_courses: list[RecommendedCourse] = []
     recommended_courses: list[RecommendedCourse] = []
 
+    # 先给每门课打好 source 标记，然后批量生成推荐理由
+    course_sources: dict[str, str] = {}  # core_name → source
+    for course in selected_courses:
+        core = extract_core_name(str(course.get("课程名称") or ""))
+        course_sources[core] = "user_required" if core in matched_required_cores else "system_supplement"
+
+    # 批量生成推荐理由：非必须课程让 LLM 给出多样化理由
+    llm_reasons: dict[str, str] = {}
+    non_required = [(c, extract_core_name(str(c.get("课程名称") or "")))
+                    for c in selected_courses
+                    if course_sources.get(extract_core_name(str(c.get("课程名称") or "")), "") != "user_required"]
+    if non_required:
+        try:
+            llm_service2 = LLMService()
+            course_list = "\n".join([
+                f"- {cn} ({c.get('学分', 3)}学分) [{str(c.get('课程种类') or c.get('课程属性') or '')}]"
+                for c, cn in non_required
+            ])
+            prompt = f"""
+学生专业: {profile.major or '计算机科学与技术'}
+已修课程: {', '.join(list(completed_names)[:15])}
+用户需求: {profile.recommendation_note or '无'}
+
+以下是系统补充推荐的课程，请为每门课写一句简短的推荐理由（10-20字），说明为什么推荐，结合专业方向、培养方案、技能拓展等角度，不要写"系统推荐"。
+
+课程列表:
+{course_list}
+
+请按顺序为以上每门课输出一行理由，格式: 课程名: 理由
+只输出理由，不要 JSON。
+"""
+            resp = llm_service2._chat_completion(
+                prompt,
+                temperature=0.4,
+                max_tokens=300,
+                label="course_reasons",
+                model=llm_service2.lightweight_model_name,
+                fallback_model=llm_service2._lightweight_fallback_model,
+            )
+            if resp:
+                for line in resp.strip().split("\n"):
+                    line = line.strip()
+                    if ":" in line or "：" in line:
+                        # Parse "课程名: 理由"
+                        sep = ":" if ":" in line else "："
+                        parts = line.split(sep, 1)
+                        name_key = parts[0].strip()
+                        reason_text = parts[1].strip() if len(parts) > 1 else ""
+                        if name_key and reason_text:
+                            # Match by fuzzy core name
+                            for _, cn in non_required:
+                                if _normalize(name_key) in _normalize(cn) or _normalize(cn) in _normalize(name_key):
+                                    llm_reasons[cn] = reason_text
+                                    break
+                            else:
+                                # fallback: store by the original name key
+                                llm_reasons[name_key] = reason_text
+        except Exception as e:
+            print(f"[推荐] 生成课程理由失败: {e}")
+
     for course in selected_courses:
         schedule_str = course.get("上课信息", "")
         slots = parse_all_schedules(schedule_str)
-        # Prefer the original JSON `课程名称` for display; fall back to helper which may include 教学班
         course_name = str(course.get("课程名称") or "").strip()
         if not course_name:
             course_name = _course_display_name(course)
 
-        # 判断是否是必须课程
         core = extract_core_name(course.get("课程名称", ""))
-        source = "user_required" if core in required_keywords else "system_supplement"
+        source = course_sources.get(core, "system_supplement")
+
+        # 确定推荐理由
+        if source == "user_required":
+            reason = "优先推荐，用户要求"
+        else:
+            # 优先用 LLM 生成的理由，fallback 用默认描述
+            reason = llm_reasons.get(core) or llm_reasons.get(course_name) or "专业拓展，丰富知识结构"
 
         if slots:
-            # 有上课信息：加入课表
             for (dow, ss, es, loc, weeks) in slots:
                 meetings.append(CourseMeeting(
                     course_id=course.get("课程代码"),
@@ -1163,24 +1227,22 @@ def plan_schedule_with_llm(
                     source="recommendation",
                     metadata={},
                 ))
-            # 添加到推荐列表（有课表）
             recommended_courses.append(RecommendedCourse(
                 course_id=course.get("课程代码"),
                 course_name=course_name,
                 credits=course.get("学分"),
                 score=0.8,
-                reason="满足您的选课偏好",
+                reason=reason,
                 status="scheduled",
                 source=source,
             ))
         else:
-            # 后置名单：无上课信息，仅加入 postponed_courses 和推荐列表
             postponed_courses.append(RecommendedCourse(
                 course_id=course.get("课程代码"),
                 course_name=course_name,
                 credits=course.get("学分"),
                 score=0.8,
-                reason="该课程为后置名单，无具体课表时间",
+                reason=f"{reason}（该课程暂无具体课表时间）",
                 status="postponed",
                 source=source,
             ))
@@ -1189,7 +1251,7 @@ def plan_schedule_with_llm(
                 course_name=course_name,
                 credits=course.get("学分"),
                 score=0.8,
-                reason="满足您的选课偏好，该课程为后置名单，无具体课表时间",
+                reason=f"{reason}（该课程暂无具体课表时间）",
                 status="postponed",
                 source=source,
             ))

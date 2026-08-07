@@ -1,47 +1,81 @@
-"""FAISS-backed vector store for semantic search."""
+"""Vector store using PostgreSQL pgvector-style cosine similarity search.
+
+Replaces the previous FAISS in-memory index.  Embeddings are persisted
+in the PostgreSQL chunks table; search runs via the cosine_similarity()
+SQL function.
+"""
 
 from __future__ import annotations
 
-from typing import Sequence
+from typing import Sequence, Optional
 
-import faiss
 import numpy as np
 
 from .embeddings import SentenceTransformerEmbeddings
 from .models import ChunkRecord, SearchResult
+from .pg_store import vector_search, insert_chunks, init_db, count_chunks, load_all_chunks
 
 
 class VectorStore:
-    def __init__(self, embeddings: SentenceTransformerEmbeddings | None = None) -> None:
+    """PostgreSQL-backed vector store with brute-force cosine search.
+
+    Stores embeddings alongside chunk metadata in PG.  Search uses
+    the ``cosine_similarity()`` PL/pgSQL function — equivalent to
+    FAISS IndexFlatIP over L2-normalized vectors.
+    """
+
+    def __init__(self, embeddings: Optional[SentenceTransformerEmbeddings] = None) -> None:
         self.embeddings = embeddings or SentenceTransformerEmbeddings()
-        self.index: faiss.Index | None = None
         self.chunks: list[ChunkRecord] = []
+        self._index_ready = False
+        self.load_index()
 
     def reset(self) -> None:
-        self.index = None
         self.chunks = []
+        self._index_ready = False
 
     def build(self, chunks: Sequence[ChunkRecord]) -> None:
+        """Build the vector index: encode chunks and persist to PostgreSQL."""
         self.chunks = list(chunks)
-
         if not self.chunks:
             self.reset()
             return
 
+        # Initialize schema if needed
+        init_db()
+
+        # Encode all chunks
         texts = [chunk.text for chunk in self.chunks]
         embeddings = self.embeddings.encode(texts)
-
         if embeddings.ndim == 1:
             embeddings = embeddings.reshape(1, -1)
-
         embeddings = np.asarray(embeddings, dtype=np.float32)
+
+        # L2 normalize
         norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
         norms[norms == 0] = 1.0
         embeddings = embeddings / norms
 
-        dimension = embeddings.shape[1]
-        self.index = faiss.IndexFlatIP(dimension)
-        self.index.add(embeddings)
+        # Persist to PostgreSQL
+        insert_chunks(self.chunks, embeddings)
+
+        self._index_ready = True
+        print(f"VectorStore: Built index with {len(self.chunks)} chunks ({embeddings.shape[1]}d).")
+
+    def load_index(self) -> bool:
+        """Load existing chunks from PostgreSQL."""
+        try:
+            n = count_chunks()
+            if n == 0:
+                print("VectorStore: No chunks in database. Run index_documents.py first.")
+                return False
+            self.chunks = load_all_chunks()
+            self._index_ready = True
+            print(f"VectorStore: Loaded {len(self.chunks)} chunks from PostgreSQL.")
+            return True
+        except Exception as e:
+            print(f"VectorStore: Load failed: {e}")
+            return False
 
     def search(
         self,
@@ -51,64 +85,36 @@ class VectorStore:
         fetch_k: int | None = None,
         allowed_source_prefixes: Sequence[str] | None = None,
     ) -> list[SearchResult]:
-        if self.index is None or not self.chunks or not query.strip():
+        """Semantic search via PostgreSQL cosine similarity."""
+        if not self._index_ready and not self.load_index():
             return []
 
-        # 1. 扩大检索范围（fetch_k 可以设大一点，比如 k * 3）
-        fetch_k = fetch_k or max(k * 3, 10)
-        top_k = min(fetch_k, len(self.chunks))
-        
-        # 2. 标准化课程前缀
-        normalized_prefixes = tuple(
-            prefix.strip().rstrip("/") + "/"
-            for prefix in (allowed_source_prefixes or [])
-            if prefix and prefix.strip()
-        )
-        
-        # 3. 计算 query embedding
+        if not query.strip():
+            return []
+
+        # Encode query
         query_embedding = self.embeddings.encode([query])
         if query_embedding.ndim == 1:
             query_embedding = query_embedding.reshape(1, -1)
         query_embedding = np.asarray(query_embedding, dtype=np.float32)
-        query_norm = np.linalg.norm(query_embedding, axis=1, keepdims=True)
-        query_norm[query_norm == 0] = 1.0
-        query_embedding = query_embedding / query_norm
-        
-        # 4. 检索 fetch_k 个最相似结果
-        scores, indices = self.index.search(query_embedding, top_k)
-        
-        # 5. 过滤 + 取前 k 个符合条件的
-        results: list[SearchResult] = []
-        for score, index in zip(scores[0], indices[0]):
-            if index < 0:
-                continue
-            
-            chunk = self.chunks[index]
-            
-            # 课程过滤
-            if normalized_prefixes:
-                # 检查 chunk 的 source_name 是否以任一允许的前缀开头
-                matched = any(
-                    chunk.source_name.startswith(prefix) 
-                    for prefix in normalized_prefixes
-                )
-                if not matched:
-                    continue
-            
-            results.append(
-                SearchResult(
-                    source_name=chunk.source_name,
-                    source_path=chunk.source_path,
-                    chunk_id=chunk.chunk_id,
-                    text=chunk.text,
-                    score=float(score),
-                    start_char=chunk.start_char,
-                    end_char=chunk.end_char,
-                    page_count=chunk.page_count,
-                )
-            )
-            
-            if len(results) >= k:
-                break
-        
-        return results
+
+        # L2 normalize
+        qnorm = np.linalg.norm(query_embedding, axis=1, keepdims=True)
+        qnorm[qnorm == 0] = 1.0
+        query_embedding = query_embedding / qnorm
+
+        # PG vector search
+        fetch = fetch_k or max(k * 3, 10)
+
+        # Normalize source prefixes for LIKE matching
+        prefixes: list[str] | None = None
+        if allowed_source_prefixes:
+            prefixes = [
+                p.strip().rstrip("/") + "/"
+                for p in allowed_source_prefixes
+                if p and p.strip()
+            ]
+            if not prefixes:
+                prefixes = None
+
+        return vector_search(query_embedding, k=k, fetch_k=fetch, source_prefixes=prefixes)

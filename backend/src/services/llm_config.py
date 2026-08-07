@@ -105,18 +105,18 @@ OPENAI_BASE_URL = "https://api.openai.com/v1"
 
 DEFAULT_TIERS: Dict[str, Dict[str, Any]] = {
     "lightweight": {
-        "model": "deepseek-v4-flash",
-        "fallback_model": "gpt-4o-mini",
+        "model": "qwen3.7-flash-2026-07-15",
+        "fallback_model": "qwen3.6-flash",
         "temperature": 0.1,
     },
     "smart": {
-        "model": "deepseek-v4-flash",
-        "fallback_model": "gpt-4o-mini",
+        "model": "qwen3.7-plus",
+        "fallback_model": "qwen3.6-plus",
         "temperature": 0,
     },
     "embedding": {
-        "model": "text-embedding-v1",
-        "fallback_model": "text-embedding-ada-002",
+        "model": "text-embedding-v4",
+        "fallback_model": "text-embedding-v3",
     },
     "vision": {
         "model": "qwen-vl-ocr-latest",
@@ -124,6 +124,18 @@ DEFAULT_TIERS: Dict[str, Dict[str, Any]] = {
         "temperature": 0.1,
     },
 }
+
+# DashScope chat model cascade — tried in order when primary model fails
+CHAT_MODEL_CASCADE = [
+    "qwen3.7-plus",
+    "qwen3.6-plus",
+    "qwen3.7-max",
+    "qwen3-235b-a22b-instruct-2507",
+    "qwen-plus-2025-07-28",
+    "qwen3.7-flash-2026-07-15",
+    "deepseek-v4-flash-0731",
+    "deepseek-r1",
+]
 
 
 # ---------------------------------------------------------------------------

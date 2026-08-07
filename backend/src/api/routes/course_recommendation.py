@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 from ...agents.registry import AgentRegistry
 from ...services.course_recommendation import (
@@ -521,6 +521,9 @@ def _load_course_offerings_from_full_table(
                     "end_slot": end_slot or None,
                     "weeks": weeks or None,
                     "source": "all_courses_merged.json",
+                    # Keep original Chinese fields at top level for downstream lookups
+                    "上课信息": schedule_text,
+                    "课程种类": course.get("课程种类", ""),
                     "metadata": {
                         "课程类别": course.get("课程类别", ""),
                         "授课语言": course.get("授课语言", ""),
@@ -540,6 +543,25 @@ def _normalize_course_key(value: object) -> str:
     return re.sub(r"\s+", "", str(value or "")).casefold()
 
 
+def extract_course_core_for_dedup(course_name: str) -> str:
+    """Extract core course name for meeting dedup: strip parentheticals and normalize."""
+    core = re.sub(r"[（(].*", "", course_name).strip()
+    return re.sub(r"\s+", "", core).casefold()
+
+
+def _get_offering_field(offering: dict, *english_names: str, chinese: str = "", default: object = None) -> object:
+    """Get a field value from an offering dict, trying English names first, then Chinese."""
+    for name in english_names:
+        val = offering.get(name)
+        if val not in (None, ""):
+            return val
+    if chinese:
+        val = offering.get(chinese)
+        if val not in (None, ""):
+            return val
+    return default
+
+
 def _coerce_optional_int(value: object) -> Optional[int]:
     if isinstance(value, bool):
         return None
@@ -554,15 +576,55 @@ def _coerce_optional_int(value: object) -> Optional[int]:
     return None
 
 
+def _parse_schedule_to_slots(schedule_str: str) -> list[tuple[int, int, int]]:
+    """Parse '星期二第3-4节; 星期二第5-6节' → [(2,3,4), (2,5,6)]."""
+    if not schedule_str:
+        return []
+    wd_map = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '日': 7}
+    slots: list[tuple[int, int, int]] = []
+    for m in re.finditer(r'星期([一二三四五六日])第(\d+)-(\d+)节', str(schedule_str)):
+        slots.append((wd_map[m.group(1)], int(m.group(2)), int(m.group(3))))
+    return slots
+
+
 def _build_course_offering_lookup(offerings: list[dict]) -> dict[str, dict]:
     lookup: dict[str, dict] = {}
     for offering in offerings:
         if not isinstance(offering, dict):
             continue
-        for field in ("course_id", "course_name", "teaching_class"):
+        # Pre-parse schedule info so sanitization can fill missing time slots
+        raw_schedule = str(offering.get("上课信息") or "")
+        all_slots = _parse_schedule_to_slots(raw_schedule)
+        enriched = dict(offering)
+        if all_slots:
+            enriched["all_slots"] = all_slots
+            # Backward compat: first slot as primary
+            enriched["day_of_week"] = all_slots[0][0]
+            enriched["start_slot"] = all_slots[0][1]
+            enriched["end_slot"] = all_slots[0][2]
+        # Support BOTH Chinese and English field names (PG search uses English, full table uses Chinese)
+        candidate_fields = (
+            "course_id", "course_name", "teaching_class",
+            "课程代码", "课程名称", "教学班",
+        )
+        for field in candidate_fields:
             key = _normalize_course_key(offering.get(field))
-            if key and key not in lookup:
-                lookup[key] = offering
+            if not key:
+                continue
+            if key not in lookup:
+                lookup[key] = enriched
+            else:
+                # Merge: union all_slots from theory+lab offerings of the same course
+                existing = lookup[key]
+                existing_slots = existing.get("all_slots") or []
+                new_slots = enriched.get("all_slots") or []
+                if new_slots:
+                    merged: list[tuple[int, int, int]] = list(existing_slots)
+                    for s in new_slots:
+                        if s not in merged:
+                            merged.append(s)
+                    if len(merged) > len(existing_slots):
+                        existing["all_slots"] = merged
     return lookup
 
 
@@ -572,7 +634,8 @@ def _find_matching_offering(
 ) -> Optional[dict]:
     candidate_keys = [
         _normalize_course_key(meeting.get(field))
-        for field in ("course_id", "course_name", "teaching_class")
+        for field in ("course_id", "course_name", "teaching_class",
+                       "课程代码", "课程名称", "教学班", "KCH", "KCMC")
     ]
     candidate_keys = [key for key in candidate_keys if key]
     for key in candidate_keys:
@@ -584,6 +647,260 @@ def _find_matching_offering(
             if key in lookup_key or lookup_key in key:
                 return offering
     return None
+
+
+def _enforce_credit_limits(
+    parsed: dict,
+    min_credits: int,
+    max_credits: int,
+    desired_courses: list[str],
+    offerings: list[dict],
+) -> dict:
+    """Enforce credit limits on the generated plan.
+
+    Drops non-user-required courses when total exceeds max_credits.
+    Adds warnings when total falls below min_credits.
+    """
+    recs: list[dict] = parsed.get("recommended_courses") or []
+    meetings: list[dict] = parsed.get("meetings") or []
+    warnings: list[str] = list(parsed.get("warnings") or [])
+
+    if not recs:
+        return parsed
+
+    # Identify user-desired courses (keep these)
+    desired_norm = {_normalize_text(d) for d in desired_courses}
+
+    def _is_desired(course: dict) -> bool:
+        name = str(course.get("course_name") or "")
+        core = re.sub(r"[（(].*", "", name).strip()
+        norm = _normalize_text(name)
+        core_norm = _normalize_text(core)
+        return norm in desired_norm or core_norm in desired_norm
+
+    # Deduplicate by course name (keep first occurrence)
+    seen_names: set[str] = set()
+    deduped: list[dict] = []
+    for c in recs:
+        name = str(c.get("course_name") or "").strip()
+        if name and name not in seen_names:
+            seen_names.add(name)
+            deduped.append(c)
+
+    # Separate desired vs extra courses
+    desired_recs = [c for c in deduped if _is_desired(c)]
+    extra_recs = [c for c in deduped if not _is_desired(c)]
+
+    def _credits(course: dict) -> float:
+        try:
+            return float(course.get("credits") or 3.0)
+        except (TypeError, ValueError):
+            return 3.0
+
+    # Always keep desired courses, then add extras up to max_credits
+    final_recs: list[dict] = list(desired_recs)
+    total = sum(_credits(c) for c in final_recs)
+
+    trimmed = 0
+    for c in extra_recs:
+        credits = _credits(c)
+        if total + credits > max_credits:
+            trimmed += 1
+            continue
+        final_recs.append(c)
+        total += credits
+
+    if trimmed > 0:
+        warnings.append(
+            f"已根据学分上限 ({max_credits} 学分) 自动移除 {trimmed} 门课程，当前总学分 {total:.0f}"
+        )
+
+    if desired_recs and total > max_credits:
+        # Even user-desired courses exceed the limit — keep them but warn
+        warnings.append(
+            f"用户要求的课程已达 {sum(_credits(c) for c in desired_recs):.0f} 学分，超出上限 {max_credits} 学分，已全部保留"
+        )
+        final_recs = desired_recs
+        total = sum(_credits(c) for c in final_recs)
+
+    if total < min_credits and min_credits > 0:
+        warnings.append(
+            f"当前推荐总学分 {total:.0f} 低于最低要求 {min_credits} 学分，可能无可选课程或已修课程过多"
+        )
+
+    # Sync meetings: fuzzy-match against final recommended courses
+    def _name_match(meeting_name: str, course_names: set[str]) -> bool:
+        mn = _normalize_text(meeting_name)
+        if not mn:
+            return False
+        for cn in course_names:
+            cn_norm = _normalize_text(cn)
+            if not cn_norm:
+                continue
+            if mn == cn_norm or mn in cn_norm or cn_norm in mn:
+                return True
+            # Also try matching core name (before parentheses)
+            cn_core = _normalize_text(re.sub(r"[（(].*", "", cn))
+            if cn_core and (mn == cn_core or cn_core in mn or mn in cn_core):
+                return True
+        return False
+
+    final_names = {str(c.get("course_name") or "").strip() for c in final_recs}
+    final_meetings = [
+        m for m in meetings
+        if _name_match(str(m.get("course_name") or ""), final_names)
+    ]
+
+    # Build offering lookup for schedule promotion
+    lookup = _build_course_offering_lookup(offerings)
+
+    def _add_meetings_from_offering(course: dict, matched: dict) -> int:
+        """Create meeting entries from a matched offering. Returns number created."""
+        all_slots = matched.get("all_slots") or []
+        if not all_slots:
+            dow = matched.get("day_of_week")
+            ss = matched.get("start_slot")
+            es = matched.get("end_slot")
+            if dow is not None and ss is not None and es is not None:
+                all_slots = [(dow, ss, es)]
+        if not all_slots:
+            return 0
+        created = 0
+        for dow, ss, es in all_slots:
+            meeting = dict(course)
+            meeting["day_of_week"] = dow
+            meeting["start_slot"] = ss
+            meeting["end_slot"] = es
+            meeting["location"] = (meeting.get("location")
+                or _get_offering_field(matched, "location", chinese="上课地点")
+                or "待定")
+            meeting["instructor"] = (meeting.get("instructor")
+                or _get_offering_field(matched, "instructor", "teacher", chinese="教师")
+                or "待定")
+            meeting["weeks"] = (meeting.get("weeks")
+                or _get_offering_field(matched, "weeks", chinese="周次")
+                or "1-16周")
+            if meeting.get("status"):
+                meeting["status"] = "scheduled"
+            final_meetings.append(meeting)
+            created += 1
+        return created
+
+    # Promote postponed courses that actually have schedule info
+    postponed: list[dict] = parsed.get("postponed_courses") or []
+    promoted = 0
+    remaining_postponed: list[dict] = []
+    for pc in postponed:
+        pc_name = str(pc.get("course_name") or "").strip()
+        matched = _find_matching_offering({"course_name": pc_name}, lookup)
+        if matched:
+            n = _add_meetings_from_offering(pc, matched)
+            if n > 0:
+                if pc not in final_recs:
+                    final_recs.append(pc)
+                promoted += 1
+                continue
+        remaining_postponed.append(pc)
+
+    if promoted > 0:
+        warnings.append(f"已将 {promoted} 门有课表的后置课程提升到课表中")
+
+    # Fill/expand meetings: ensure every recommended course has ALL time slots from offering
+    filled = 0
+    expanded = 0
+    for rc in final_recs:
+        rc_name = str(rc.get("course_name") or "").strip()
+        if not rc_name:
+            continue
+        matched = _find_matching_offering({"course_name": rc_name}, lookup)
+        if not matched:
+            continue
+        all_slots = matched.get("all_slots") or []
+        if not all_slots:
+            # fallback to single slot
+            dow = matched.get("day_of_week")
+            ss = matched.get("start_slot")
+            es = matched.get("end_slot")
+            if dow is not None and ss is not None and es is not None:
+                all_slots = [(dow, ss, es)]
+        if not all_slots:
+            continue
+
+        # Check which slots already exist for this course
+        existing_slots = {
+            (m.get("day_of_week"), m.get("start_slot"), m.get("end_slot"))
+            for m in final_meetings
+            if str(m.get("course_name") or "").strip() == rc_name
+        }
+        if not existing_slots:
+            # No meetings at all — create all from offering
+            n = _add_meetings_from_offering(rc, matched)
+            if n > 0:
+                filled += 1
+        else:
+            # Has some meetings — add missing slots
+            for dow, ss, es in all_slots:
+                if (dow, ss, es) not in existing_slots:
+                    meeting = dict(rc)
+                    meeting["day_of_week"] = dow
+                    meeting["start_slot"] = ss
+                    meeting["end_slot"] = es
+                    meeting["location"] = (meeting.get("location")
+                        or _get_offering_field(matched, "location", chinese="上课地点")
+                        or "待定")
+                    meeting["instructor"] = (meeting.get("instructor")
+                        or _get_offering_field(matched, "instructor", "teacher", chinese="教师")
+                        or "待定")
+                    meeting["weeks"] = (meeting.get("weeks")
+                        or _get_offering_field(matched, "weeks", chinese="周次")
+                        or "1-16周")
+                    if meeting.get("status"):
+                        meeting["status"] = "scheduled"
+                    final_meetings.append(meeting)
+                    expanded += 1
+
+    if filled > 0:
+        warnings.append(f"已为 {filled} 门课程自动补全课表时间（含多课节）")
+    if expanded > 0:
+        warnings.append(f"已为 {expanded} 个缺失课节补全时间")
+
+    # Debug: log final state
+    print(f"[CREDIT] final: {len(final_recs)} recs, {len(final_meetings)} meetings, total={total:.0f}cr")
+    for m in final_meetings:
+        print(f"  MEETING: {m.get('course_name','?')} | dow={m.get('day_of_week')} slot={m.get('start_slot')}-{m.get('end_slot')} | loc={m.get('location','?')}")
+    for rc in final_recs:
+        rc_name = str(rc.get("course_name") or "").strip()
+        in_meeting = any(str(m.get("course_name") or "").strip() == rc_name for m in final_meetings)
+        print(f"  REC: {rc_name} ({rc.get('credits','?')}cr) in_meeting={in_meeting}")
+
+    # Dedup meetings: same course core name + same (day, start, end) → keep only one
+    seen_meetings: set[tuple[str, int, int, int]] = set()
+    deduped_meetings: list[dict] = []
+    dedup_dropped = 0
+    for m in final_meetings:
+        core = extract_course_core_for_dedup(str(m.get("course_name") or ""))
+        dow = _coerce_optional_int(m.get("day_of_week"))
+        ss = _coerce_optional_int(m.get("start_slot"))
+        es = _coerce_optional_int(m.get("end_slot"))
+        if dow is None or ss is None or es is None:
+            deduped_meetings.append(m)
+            continue
+        key = (core, dow, ss, es)
+        if key in seen_meetings:
+            dedup_dropped += 1
+            continue
+        seen_meetings.add(key)
+        deduped_meetings.append(m)
+    if dedup_dropped > 0:
+        print(f"[MEETING] Dedup dropped {dedup_dropped} duplicate meeting(s)")
+    final_meetings = deduped_meetings
+
+    parsed["recommended_courses"] = final_recs
+    parsed["meetings"] = final_meetings
+    parsed["postponed_courses"] = remaining_postponed
+    parsed["warnings"] = warnings
+
+    return parsed
 
 
 def _sanitize_recommendation_payload(
@@ -816,6 +1133,19 @@ def _build_recommendation_agent_prompt(
     curriculum_plan_context: list[dict],
     desired_courses: list[str],
 ) -> str:
+    # Trim offerings to minimal fields to stay within model token limits
+    trimmed_offerings: list[dict] = []
+    for o in offerings_for_prompt:
+        name = o.get("course_name") or o.get("课程名称") or ""
+        sched = o.get("上课信息") or ""
+        trimmed_offerings.append({
+            "n": name,                                          # course_name
+            "c": o.get("course_id") or o.get("课程代码") or "", # course_id
+            "k": o.get("课程种类") or o.get("course_kind") or "theory",  # kind
+            "cr": o.get("credits") or None,                     # credits
+            "s": sched[:80] if sched else "",                   # schedule (truncated)
+        })
+
     payload = {
         "request": {
             "term_id": req.term_id,
@@ -838,7 +1168,7 @@ def _build_recommendation_agent_prompt(
         "target_term_schedule": schedule.meetings,
         "completed_courses_by_term": completed_course_sections,
         "curriculum_plan_context": curriculum_plan_context,
-        "course_offerings": offerings_for_prompt,
+        "course_offerings": trimmed_offerings,
     }
 
     return (
@@ -864,7 +1194,11 @@ def _build_recommendation_agent_prompt(
         "course_offerings 代表全校可选课程，包含教学班、教师、上课信息和学分。"
         "查找全校课表课程时，不要求逐字完全对应，可以根据课程代码、课程名片段、"
         "中文/英文别名、教师名和教学班号做模糊匹配。\n"
-        "6.1 如果某门课的课程种类既有'theory'又有'lab'，你只能选择一节'theory'和一节'lab'，或者不选这门课 \n"
+        "6.1 如果某门课的课程种类既有'theory'又有'lab'，你只能选择一节'theory'和一节'lab'，或者不选这门课。\n"
+        "6.1a 注意：部分 lab 教学班的「上课信息」已同时包含理论课和实验课的时间（因为学生选了该 lab 班后需要同时上理论+实验），"
+        "此时 lab 条目本身就有多个时间段（如「周二第3-4节 智华楼207; 周二第5-6节 智华楼508机房」），"
+        "你仍然按照 6.1 的规则选择对应的 theory + lab 各一条。\n"
+        "6.1b 生成 meetings 时，如果 theory 和 lab 条目有重复的时间段（同一个 day_of_week + 同一个 start_slot + 同一个 end_slot），只保留一条。\n"
         "6.2 如果 student_profile.desired_courses 或 desired_courses_from_note 不为空，"
         "要优先推荐这些课程，只要它们能在全校课表中找到。\n"
         "7. meetings 里的每一项都必须有完整的 day_of_week、start_slot、end_slot；"
@@ -872,7 +1206,10 @@ def _build_recommendation_agent_prompt(
         "8. 如果课程信息不完整，在 warnings 中说明。\n"
         "9. 课程名称必须来自输入中的 course_offerings，不要编造课程。\n"
         "10. recommended_courses 和 postponed_courses 都可以为空，"
-        "但 reason / rationale / warnings 要诚实。\n\n"
+        "但 reason / rationale / warnings 要诚实。\n"
+        f"11. 【重要】必须严格遵守学分要求：总共推荐课程的学分必须在 {req.min_credits} 到 {req.max_credits} 之间。"
+        f"如果可选课程不足以达到最低学分，在 warnings 中说明。"
+        f"课程不足时，可以从同专业大类（计算机、电子、自动化等）或相近方向推荐补充课程。\n\n"
         "输入 JSON:\n"
         f"{json.dumps(payload, ensure_ascii=False, indent=2, default=str)}"
     )
@@ -1177,8 +1514,59 @@ def plan_courses(req: RecommendationRequest):
     except TisClientError:
         offerings = []
 
-    if not offerings:
-        offerings = _load_course_offerings_from_full_table()
+    # Always supplement with full course table to ensure desired courses are present.
+    # Use (course_id, teaching_class) as dedup key to keep theory+lab variants.
+    full_table = _load_course_offerings_from_full_table()
+    if full_table:
+        existing_ids = {
+            (str(o.get("course_id") or ""), str(o.get("课程名称") or o.get("course_name") or "").strip(),
+             str(o.get("teaching_class") or o.get("教学班") or "").strip())
+            for o in offerings
+        }
+        for course in full_table:
+            key = (str(course.get("course_id") or ""),
+                   str(course.get("课程名称") or course.get("course_name") or "").strip(),
+                   str(course.get("teaching_class") or course.get("教学班") or "").strip())
+            if key not in existing_ids:
+                offerings.append(course)
+                existing_ids.add(key)
+
+    # Dedup by (课程名称, 课程种类): for courses with both theory and lab,
+    # keep the best offering of EACH kind. Treat missing/empty 课程种类 as "theory".
+    # Supports both Chinese (full table) and English (PG search) field names.
+    by_name_kind: dict[tuple[str, str], list[dict]] = {}
+    for o in offerings:
+        name = str(o.get("课程名称") or o.get("course_name") or "").strip()
+        if not name:
+            continue
+        kind = str(o.get("课程种类") or o.get("course_kind") or "").strip().lower()
+        if kind not in ("theory", "lab"):
+            kind = "theory"
+        by_name_kind.setdefault((name, kind), []).append(o)
+
+    deduped_offerings: list[dict] = []
+    dropped = 0
+    for (_name, _kind), items in by_name_kind.items():
+        if len(items) == 1:
+            deduped_offerings.extend(items)
+            continue
+        # Count time slots for each offering
+        def _slot_count(offering: dict) -> int:
+            raw = str(offering.get("上课信息") or "")
+            return len(re.findall(r'星期[一二三四五六日]第\d+-\d+节', raw))
+        max_slots = max(_slot_count(item) for item in items)
+        # Keep only the first (best) offering per (name, kind) to avoid merging
+        # slots from unrelated teaching classes
+        best = [item for item in items if _slot_count(item) == max_slots]
+        kept = best[:1]
+        dropped += len(items) - len(kept)
+        deduped_offerings.extend(kept)
+
+    if dropped > 0:
+        print(f"[OFFER] Dropped {dropped} course(s) with fewer time slots (same name+kind)")
+        offerings = deduped_offerings
+
+    print(f"[OFFER] {len(offerings)} courses (PG search + full table + dedup)")
 
     curriculum_plan_context = _load_curriculum_plan_context(req.major or "")
     desired_courses = _extract_desired_courses_from_note(
@@ -1210,7 +1598,7 @@ def plan_courses(req: RecommendationRequest):
             major=req.major,
             desired_courses=desired_courses,
             curriculum_plan_context=curriculum_plan_context,
-            limit=180,
+            limit=80,
         )
 
         agent = AgentRegistry.get(COURSE_RECOMMENDATION_AGENT_NAME)
@@ -1236,13 +1624,43 @@ def plan_courses(req: RecommendationRequest):
                 curriculum_plan_context,
                 desired_courses,
             )
-            result = agent.run_turn(prompt)
+            # Try with fallback models if agent's primary model fails
+            raw_response = ""
+            cascade_models = list(dict.fromkeys(
+                ["qwen3.7-plus", "qwen3.6-plus", "qwen3.7-max",
+                 "qwen3-235b-a22b-instruct-2507", "qwen-plus-2025-07-28",
+                 "qwen3.7-flash-2026-07-15", "deepseek-v4-flash-0731", "deepseek-r1"]
+            ))
+            for attempt, fallback_model in enumerate(cascade_models):
+                if attempt > 0:
+                    print(f"[AGENT] Retrying with fallback model {fallback_model}...")
+                    try:
+                        from langchain_openai import ChatOpenAI
+                        from ...services.llm_config import LLMConfig
+                        cfg = LLMConfig.get_instance()
+                        new_llm = ChatOpenAI(
+                            model=fallback_model,
+                            api_key=SecretStr(cfg.api_key or ""),
+                            base_url=cfg.base_url,
+                            temperature=0,
+                        )
+                        agent.reinitialize(new_llm)
+                    except Exception as e:
+                        print(f"[AGENT] Failed to reinitialize with {fallback_model}: {e}")
+                        continue
+                try:
+                    result = agent.run_turn(prompt)
+                    raw_response = result.get("reply", "") if isinstance(result, dict) else ""
+                    parsed = _parse_json_payload(raw_response)
+                    if isinstance(parsed, dict) and parsed.get("recommended_courses"):
+                        break  # Success!
+                except Exception as e:
+                    last_error = e
+                    print(f"[AGENT] Model {fallback_model} failed: {e}")
+                    raw_response = ""
         finally:
             AgentRegistry.release(COURSE_RECOMMENDATION_AGENT_NAME)
 
-        raw_response = (
-            result.get("reply", "") if isinstance(result, dict) else ""
-        )
         parsed = _parse_json_payload(raw_response)
         if not isinstance(parsed, dict):
             raise ValueError(
@@ -1251,6 +1669,16 @@ def plan_courses(req: RecommendationRequest):
 
         parsed.setdefault("term", schedule.term.model_dump(mode="json"))
         parsed = _sanitize_recommendation_payload(parsed, offerings)
+
+        # ── Enforce credit limits ──────────────────────────────────
+        parsed = _enforce_credit_limits(
+            parsed,
+            min_credits=req.min_credits,
+            max_credits=req.max_credits,
+            desired_courses=desired_courses,
+            offerings=offerings,
+        )
+
         plan = RecommendationPlan.model_validate(parsed)
     except Exception as e:
         import os

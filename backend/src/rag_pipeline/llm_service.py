@@ -124,49 +124,60 @@ class LLMService:
     ) -> Optional[str]:
         """Send a chat prompt, returning the assistant reply.
 
-        Tries the **primary** provider first.  If that fails and a fallback
-        provider is configured, retries with the fallback.
-
-        If *model* is given it overrides the default smart-tier model;
-        likewise *fallback_model* overrides the fallback model.
+        Cascade: primary model → fallback model → other DashScope models
+        → fallback provider (e.g. OpenAI).  Multiple models are tried on
+        the same API key / base URL; only the model name changes.
         """
         if not self.client and not self.fallback_client:
             print("LLMService: No client available (no API keys configured)")
             return None
 
-        print(f"Prompt length: {len(prompt)} chars [{label}]")
+        from ..services.llm_config import CHAT_MODEL_CASCADE
 
-        # ── Attempt 1: primary client ──────────────────────────────
+        # Build the ordered list of models to try
+        primary = model or self.model_name
+        fb = fallback_model or self.fallback_model or ""
+        tried: set[str] = set()
+        models_to_try: list[str] = []
+
+        if primary:
+            models_to_try.append(primary)
+            tried.add(primary)
+        if fb and fb not in tried:
+            models_to_try.append(fb)
+            tried.add(fb)
+        for m in CHAT_MODEL_CASCADE:
+            if m not in tried:
+                models_to_try.append(m)
+                tried.add(m)
+
+        print(f"Prompt length: {len(prompt)} chars [{label}], cascade: {' → '.join(models_to_try[:4])}")
+
+        # ── Attempt 1..N: primary client, multiple models ──────────
         if self.client:
-            result = self._try_client(
-                self.client,
-                model or self.model_name,
-                prompt=prompt,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                label=label,
-                system_prompt=system_prompt,
-                phase="primary",
-            )
-            if result is not None:
-                return result
+            for m in models_to_try:
+                phase = "primary" if m == primary else f"cascade/{m}"
+                result = self._try_client(
+                    self.client, m,
+                    prompt=prompt, temperature=temperature,
+                    max_tokens=max_tokens, label=label,
+                    system_prompt=system_prompt, phase=phase,
+                )
+                if result is not None:
+                    return result
 
-        # ── Attempt 2: fallback client ─────────────────────────────
+        # ── Last resort: fallback provider ─────────────────────────
         if self.fallback_client:
             result = self._try_client(
-                self.fallback_client,
-                fallback_model or self.fallback_model,
-                prompt=prompt,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                label=label,
-                system_prompt=system_prompt,
-                phase="fallback",
+                self.fallback_client, fb or self.fallback_model,
+                prompt=prompt, temperature=temperature,
+                max_tokens=max_tokens, label=label,
+                system_prompt=system_prompt, phase="fallback",
             )
             if result is not None:
                 return result
 
-        print(f"LLMService: All LLM clients failed ({label})")
+        print(f"LLMService: All LLM models + fallback failed ({label})")
         return None
 
     @staticmethod
@@ -213,20 +224,76 @@ class LLMService:
         model: str | None = None,
         fallback_model: str | None = None,
     ) -> Generator[str, None, None]:
-        """Stream LLM response chunks. Yields text deltas as they arrive."""
+        """Stream LLM response chunks with model-level cascade fallback.
+
+        Cascade: primary model → tier fallback → CHAT_MODEL_CASCADE models
+        → fallback provider (e.g. OpenAI).  Same logic as ``_chat_completion``.
+        """
         if not self.client and not self.fallback_client:
             print("LLMService: No client available for streaming (no API keys configured)")
             return
 
-        print(f"Prompt length: {len(prompt)} chars [stream/{label}]")
+        from ..services.llm_config import CHAT_MODEL_CASCADE
 
-        def _stream_from(client_obj, model_name, src_label):
+        # Build the ordered list of models to try (mirrors _chat_completion)
+        primary = model or self.model_name
+        fb = fallback_model or self.fallback_model or ""
+        tried: set[str] = set()
+        models_to_try: list[str] = []
+
+        if primary:
+            models_to_try.append(primary)
+            tried.add(primary)
+        if fb and fb not in tried:
+            models_to_try.append(fb)
+            tried.add(fb)
+        for m in CHAT_MODEL_CASCADE:
+            if m not in tried:
+                models_to_try.append(m)
+                tried.add(m)
+
+        print(f"Prompt length: {len(prompt)} chars [stream/{label}], cascade: {' → '.join(models_to_try[:4])}")
+
+        # ── Attempt 1..N: primary client, multiple models ──────────
+        if self.client:
+            for m in models_to_try:
+                phase = "primary" if m == primary else f"cascade/{m}"
+                try:
+                    print(f"LLMService: Streaming from {phase} LLM '{m}' ({label})...")
+                    stream = self.client.chat.completions.create(
+                        model=m,
+                        messages=(
+                            ([{"role": "system", "content": system_prompt}] if system_prompt else [])
+                            + [{"role": "user", "content": prompt}]
+                        ),
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        stream=True,
+                    )
+                    token_count = 0
+                    for chunk in stream:
+                        if not chunk.choices:
+                            continue
+                        delta = chunk.choices[0].delta
+                        if delta.content:
+                            token_count += 1
+                            yield delta.content
+                    print(f"LLMService: {phase} LLM stream finished ({label}), {token_count} tokens")
+                    return  # success — exit cascade
+                except Exception as e:
+                    print(f"LLMService: {phase} LLM stream failed ({label}): {type(e).__name__}: {e}")
+                    # Continue to next model in cascade
+
+        # ── Last resort: fallback provider ─────────────────────────
+        if self.fallback_client:
             try:
-                print(f"LLMService: Streaming from {src_label} LLM '{model_name}' ({label})...")
-                stream = client_obj.chat.completions.create(
-                    model=model_name,
-                    messages=([{"role": "system", "content": system_prompt}] if system_prompt else [])
-                    + [{"role": "user", "content": prompt}],
+                print(f"LLMService: Streaming from fallback LLM '{fb or self.fallback_model}' ({label})...")
+                stream = self.fallback_client.chat.completions.create(
+                    model=fb or self.fallback_model,
+                    messages=(
+                        ([{"role": "system", "content": system_prompt}] if system_prompt else [])
+                        + [{"role": "user", "content": prompt}]
+                    ),
                     temperature=temperature,
                     max_tokens=max_tokens,
                     stream=True,
@@ -237,19 +304,11 @@ class LLMService:
                     delta = chunk.choices[0].delta
                     if delta.content:
                         yield delta.content
-                print(f"LLMService: {src_label.capitalize()} LLM stream finished ({label})")
+                print(f"LLMService: Fallback LLM stream finished ({label})")
             except Exception as e:
-                print(f"LLMService: {src_label.capitalize()} LLM stream failed ({label}): {type(e).__name__}: {e}")
+                print(f"LLMService: Fallback LLM stream failed ({label}): {type(e).__name__}: {e}")
 
-        if self.client:
-            try:
-                yield from _stream_from(self.client, model or self.model_name, "main")
-                return
-            except Exception as e:
-                print(f"LLMService: Main stream failed ({label}): {type(e).__name__}: {e}")
-
-        if self.fallback_client:
-            yield from _stream_from(self.fallback_client, fallback_model or self.fallback_model, "fallback")
+        print(f"LLMService: All streaming models exhausted ({label})")
 
     def _compact_answer(self, answer: str, *, query_kind: str | None = None) -> str:
         text = answer.strip()
