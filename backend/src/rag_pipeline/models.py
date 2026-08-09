@@ -12,6 +12,12 @@ class DocumentRecord:
     source_path: str
     text: str
     page_count: int
+    title: str = ""          # 文档标题（PDF metadata 或文件名）
+    sections: list[dict] = None  # 结构化章节树 [{level, heading, page, start_char}]
+
+    def __post_init__(self):
+        if self.sections is None:
+            self.sections = []
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -26,6 +32,8 @@ class ChunkRecord:
     start_char: int
     end_char: int
     page_count: int = 0
+    doc_title: str = ""           # 所属文档标题
+    section_path: str = ""        # 父级标题链，如 "专业核心课 > 软件工程 > 课程安排"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -42,6 +50,8 @@ class SearchResult:
     end_char: int = 0
     page_count: int = 0
     page_number: int = 0
+    doc_title: str = ""
+    section_path: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

@@ -9,7 +9,21 @@ def format_context(citations: Sequence[SearchResult]) -> str:
     if not citations: return "（未找到相关文档参考）"
     blocks = []
     for i, citation in enumerate(citations, 1):
-        blocks.append(f"--- [Reference {i}] [Source: {citation.source_name}] ---\n{citation.text.strip()}")
+        # Build context header from stored metadata
+        context_parts: list[str] = []
+        doc_title = getattr(citation, "doc_title", "") or ""
+        section_path = getattr(citation, "section_path", "") or ""
+        if doc_title:
+            context_parts.append(f"[文档: {doc_title}]")
+        if section_path:
+            context_parts.append(f"[章节: {section_path}]")
+
+        header = f"--- [Reference {i}] [Source: {citation.source_name}]"
+        if context_parts:
+            header += " " + " ".join(context_parts)
+        header += " ---"
+
+        blocks.append(f"{header}\n{citation.text.strip()}")
     return "\n\n".join(blocks)
 
 def build_rag_prompt(

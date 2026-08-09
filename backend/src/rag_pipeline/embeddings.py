@@ -37,9 +37,9 @@ except ImportError:
 #          included only as absolute last resort per operational policy)
 
 _DASHSCOPE_EMBEDDING_MODELS = [
-    # ── Tier 1: best text embedding ──
+    # ── Tier 1: best text embedding (currently only model not overdue) ──
     "qwen3.7-text-embedding",          # Qwen3.7 series — latest & strongest
-    "text-embedding-v4",               # DashScope flagship text embedding
+    "text-embedding-v4",               # DashScope flagship text embedding (overdue)
 
     # ── Tier 2: vision-language (good text, also handle images) ──
     "qwen3-vl-embedding",              # Qwen3 VL — strong multimodal

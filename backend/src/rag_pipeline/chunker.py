@@ -49,7 +49,9 @@ def _normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def _build_header(source_path: Path) -> str:
+def _build_header(source_path: Path, doc_title: str = "") -> str:
+    if doc_title:
+        return f"[文档: {doc_title}]\n"
     if len(source_path.parts) >= 2:
         course_hint = f"{source_path.parts[0]}/{source_path.parts[1]}"
     else:
@@ -75,6 +77,57 @@ _MAX_CHUNK_CHARS = 2000     # hard cap, ignore similarity if exceeded
 _MIN_CHUNK_CHARS = 200      # don't split if chunk is still this small
 
 
+def _resolve_section_path(
+    chunk_start: int,
+    chunk_end: int,
+    sections: list[dict],
+    doc_title: str = "",
+) -> str:
+    """Build a section path for a chunk based on its character position.
+
+    Returns the chain of headings the chunk sits under, joined by ' > '.
+    Example: "计算机系培养方案 > 专业核心课 > 软件工程"
+    """
+    if not sections:
+        return doc_title
+
+    # Find all sections that start before this chunk ends and haven't started after it
+    active: list[str] = []
+    for sec in sections:
+        sec_start = int(sec.get("start_char", 0))
+        if sec_start <= chunk_start:
+            level = int(sec.get("level", 1))
+            # Keep only headings at lower or equal level (trim deeper branches)
+            while active and len(active) >= level:
+                active.pop()
+            active.append(str(sec.get("heading", "")))
+        else:
+            break
+
+    path_parts: list[str] = []
+    if doc_title:
+        path_parts.append(doc_title)
+    path_parts.extend(active)
+    return " > ".join(path_parts)
+
+
+def _augment_chunk_for_llm(raw_text: str, section_path: str, doc_title: str) -> str:
+    """Build the LLM-facing chunk text with section context.
+
+    NOT used for embedding — embedding uses raw text to avoid
+    metadata prefixes dominating the semantic signal.
+    """
+    if not section_path and not doc_title:
+        return raw_text
+    parts: list[str] = []
+    if doc_title:
+        parts.append(f"[文档: {doc_title}]")
+    if section_path:
+        parts.append(f"[章节: {section_path}]")
+    parts.append(raw_text)
+    return "\n".join(parts)
+
+
 def chunk_document(
     document: DocumentRecord,
     *,
@@ -93,6 +146,7 @@ def chunk_document(
        - The document ends.
     5. Overlap is applied by copying the last few sentences of the
        previous chunk as a prefix for the next.
+    6. Each chunk is augmented with its section path (ARPA context).
     """
     if chunk_size <= 0:
         raise ValueError("chunk_size must be positive")
@@ -105,10 +159,12 @@ def chunk_document(
     if not text:
         return []
 
+    doc_title = getattr(document, "title", "") or ""
+    sections = getattr(document, "sections", None) or []
+
     source_path = Path(document.source_name)
-    header = _build_header(source_path)
-    header_len = len(header)
-    effective_chunk_size = max(chunk_size - header_len, chunk_size // 2)
+    header = _build_header(source_path, doc_title)
+    effective_chunk_size = max(chunk_size - len(header), chunk_size // 2)
 
     sentences = _split_sentences(text)
     if not sentences:
@@ -116,15 +172,18 @@ def chunk_document(
 
     # Single-sentence document — just return it
     if len(sentences) == 1:
-        final_text = f"{header}{sentences[0]}"
+        section_path = _resolve_section_path(0, len(sentences[0]), sections, doc_title)
+        raw_text = sentences[0]
         return [ChunkRecord(
             source_name=document.source_name,
             source_path=document.source_path,
             chunk_id=f"{document.source_name}#chunk-0",
-            text=final_text[:_MAX_CHUNK_CHARS],
+            text=raw_text[:_MAX_CHUNK_CHARS],       # raw text for embedding
             start_char=0,
-            end_char=len(sentences[0]),
+            end_char=len(raw_text),
             page_count=document.page_count,
+            doc_title=doc_title,
+            section_path=section_path,
         )]
 
     # Compute sentence embeddings (use cached embedder from module-level)
@@ -154,12 +213,11 @@ def chunk_document(
             if current_len + sent_len > _MAX_CHUNK_CHARS and current_len > 0:
                 break
 
-            # Semantic boundary check: if we're already at a good size
-            # AND this sentence starts a new topic (low similarity to previous)
+            # Semantic boundary check
             if (
-                current_len > effective_chunk_size * 0.6  # chunk is 60%+ full
-                and j > i  # not the first sentence
-                and similarities[j - 1] < _SIM_THRESHOLD  # topic shift detected
+                current_len > effective_chunk_size * 0.6
+                and j > i
+                and similarities[j - 1] < _SIM_THRESHOLD
             ):
                 break
 
@@ -176,23 +234,24 @@ def chunk_document(
         if not raw_text:
             continue
 
-        final_text = f"{header}{raw_text}"
-        if len(final_text) > _MAX_CHUNK_CHARS:
-            final_text = final_text[:_MAX_CHUNK_CHARS]
-
         start_char = text.find(current[0]) if current[0] in text else 0
         last = current[-1]
         end_pos = text.find(last, start_char) if last in text else start_char
         end_char = end_pos + len(last) if end_pos >= 0 else start_char + len(raw_text)
 
+        # ARPA: resolve section path from character position (stored, not embedded)
+        section_path = _resolve_section_path(start_char, end_char, sections, doc_title)
+
         chunks.append(ChunkRecord(
             source_name=document.source_name,
             source_path=document.source_path,
             chunk_id=f"{document.source_name}#chunk-{chunk_index}",
-            text=final_text,
+            text=raw_text[:_MAX_CHUNK_CHARS],       # raw text for embedding
             start_char=start_char,
             end_char=end_char,
             page_count=document.page_count,
+            doc_title=doc_title,
+            section_path=section_path,
         ))
         chunk_index += 1
 

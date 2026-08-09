@@ -85,12 +85,13 @@ def init_db() -> None:
     with _get_conn() as conn:
         cur = conn.cursor()
 
-        # Documents table
+        # Documents table (with title + structured sections)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS documents (
                 id              SERIAL PRIMARY KEY,
                 source_name     TEXT NOT NULL UNIQUE,
                 source_path     TEXT NOT NULL,
+                title           TEXT NOT NULL DEFAULT '',
                 text            TEXT NOT NULL,
                 page_count      INTEGER NOT NULL DEFAULT 0,
                 created_at      TIMESTAMP DEFAULT NOW(),
@@ -98,7 +99,7 @@ def init_db() -> None:
             );
         """)
 
-        # Chunks table with embedding vector
+        # Chunks table with embedding + context columns
         cur.execute("""
             CREATE TABLE IF NOT EXISTS chunks (
                 id              SERIAL PRIMARY KEY,
@@ -106,10 +107,13 @@ def init_db() -> None:
                 source_path     TEXT NOT NULL,
                 chunk_id        TEXT NOT NULL UNIQUE,
                 text            TEXT NOT NULL,
+                doc_title       TEXT NOT NULL DEFAULT '',
+                section_path    TEXT NOT NULL DEFAULT '',
                 embedding       float4[] NOT NULL DEFAULT '{}',
                 start_char      INTEGER NOT NULL DEFAULT 0,
                 end_char        INTEGER NOT NULL DEFAULT 0,
                 page_count      INTEGER NOT NULL DEFAULT 0,
+                page_number     INTEGER NOT NULL DEFAULT 0,
                 created_at      TIMESTAMP DEFAULT NOW()
             );
         """)
@@ -117,6 +121,7 @@ def init_db() -> None:
         # Indexes
         cur.execute("CREATE INDEX IF NOT EXISTS idx_chunks_source ON chunks(source_name);")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_chunks_chunk_id ON chunks(chunk_id);")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_chunks_section ON chunks(section_path);")
 
         # Cosine similarity function
         cur.execute(_COSINE_FUNCTION_SQL)
@@ -141,15 +146,16 @@ def insert_document(doc: DocumentRecord) -> None:
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO documents (source_name, source_path, text, page_count)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO documents (source_name, source_path, title, text, page_count)
+            VALUES (%s, %s, %s, %s, %s)
             ON CONFLICT (source_name)
             DO UPDATE SET source_path = EXCLUDED.source_path,
+                          title       = EXCLUDED.title,
                           text        = EXCLUDED.text,
                           page_count  = EXCLUDED.page_count,
                           updated_at  = NOW();
             """,
-            (doc.source_name, doc.source_path, doc.text, doc.page_count),
+            (doc.source_name, doc.source_path, getattr(doc, "title", "") or "", doc.text, doc.page_count),
         )
 
 
@@ -179,7 +185,7 @@ def count_documents() -> int:
 
 
 def insert_chunks(chunks: list[ChunkRecord], embeddings: Optional[np.ndarray] = None) -> None:
-    """Batch-insert chunks with their embedding vectors."""
+    """Batch-insert chunks with their embedding vectors and context metadata."""
     if not chunks:
         return
 
@@ -193,7 +199,9 @@ def insert_chunks(chunks: list[ChunkRecord], embeddings: Optional[np.ndarray] = 
         psycopg2.extras.execute_values(
             cur,
             """
-            INSERT INTO chunks (source_name, source_path, chunk_id, text, embedding, start_char, end_char, page_count)
+            INSERT INTO chunks (source_name, source_path, chunk_id, text,
+                                doc_title, section_path,
+                                embedding, start_char, end_char, page_count, page_number)
             VALUES %s;
             """,
             [
@@ -202,10 +210,13 @@ def insert_chunks(chunks: list[ChunkRecord], embeddings: Optional[np.ndarray] = 
                     c.source_path,
                     c.chunk_id,
                     c.text,
+                    getattr(c, "doc_title", "") or "",
+                    getattr(c, "section_path", "") or "",
                     emb_list[i] if emb_list is not None else [],
                     c.start_char,
                     c.end_char,
                     c.page_count,
+                    getattr(c, "page_number", 0) or 0,
                 )
                 for i, c in enumerate(chunks)
             ],
@@ -268,7 +279,8 @@ def vector_search(
 
         sql = f"""
             SELECT c.source_name, c.source_path, c.chunk_id, c.text,
-                   c.embedding, c.start_char, c.end_char, c.page_count,
+                   c.doc_title, c.section_path,
+                   c.embedding, c.start_char, c.end_char, c.page_count, c.page_number,
                    cosine_similarity(c.embedding, %s::float4[]) AS score
             FROM chunks c
             {where_clause}
@@ -290,6 +302,9 @@ def vector_search(
                 start_char=int(row["start_char"]),
                 end_char=int(row["end_char"]),
                 page_count=int(row["page_count"]),
+                page_number=int(row.get("page_number", 0) or 0),
+                doc_title=str(row.get("doc_title", "") or ""),
+                section_path=str(row.get("section_path", "") or ""),
             ))
             if len(results) >= k:
                 break
@@ -309,6 +324,8 @@ def chunk_from_row(row: dict[str, Any]) -> ChunkRecord:
         start_char=int(row.get("start_char", 0)),
         end_char=int(row.get("end_char", 0)),
         page_count=int(row.get("page_count", 0)),
+        doc_title=str(row.get("doc_title", "")),
+        section_path=str(row.get("section_path", "")),
     )
 
 

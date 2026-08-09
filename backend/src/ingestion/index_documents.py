@@ -78,7 +78,7 @@ def _load_schedule_documents() -> list[DocumentRecord]:
                 )
             text = "\n".join(lines).strip()
             if text:
-                docs.append(DocumentRecord(source_name=_rel_path(fp), source_path=str(fp), text=text, page_count=1))
+                docs.append(DocumentRecord(source_name=_rel_path(fp), source_path=str(fp), text=text, page_count=1, title=fp.stem))
         except Exception:
             continue
     return docs
@@ -94,7 +94,7 @@ def _load_arrangement_documents() -> list[DocumentRecord]:
             else:
                 text = fp.read_text(encoding="utf-8", errors="ignore").strip()
             if text:
-                docs.append(DocumentRecord(source_name=_rel_path(fp), source_path=str(fp), text=text, page_count=1))
+                docs.append(DocumentRecord(source_name=_rel_path(fp), source_path=str(fp), text=text, page_count=1, title=fp.stem))
         except Exception:
             continue
     return docs
@@ -106,7 +106,7 @@ def _load_course_table() -> list[DocumentRecord]:
     try:
         data = json.loads(FULL_COURSE_TABLE.read_text(encoding="utf-8", errors="ignore"))
         text = json.dumps(data, ensure_ascii=False, indent=2)
-        return [DocumentRecord(source_name=_rel_path(FULL_COURSE_TABLE), source_path=str(FULL_COURSE_TABLE), text=text, page_count=1)]
+        return [DocumentRecord(source_name=_rel_path(FULL_COURSE_TABLE), source_path=str(FULL_COURSE_TABLE), text=text, page_count=1, title="全校课程表")]
     except Exception:
         return []
 
@@ -119,7 +119,7 @@ def _load_academic_progress() -> list[DocumentRecord]:
         try:
             data = json.loads(fp.read_text(encoding="utf-8", errors="ignore"))
             text = json.dumps(data, ensure_ascii=False, indent=2)
-            docs.append(DocumentRecord(source_name=_rel_path(fp), source_path=str(fp), text=text, page_count=1))
+            docs.append(DocumentRecord(source_name=_rel_path(fp), source_path=str(fp), text=text, page_count=1, title=fp.stem))
         except Exception:
             continue
     return docs

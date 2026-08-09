@@ -44,7 +44,7 @@ class VectorStore:
         # Initialize schema if needed
         init_db()
 
-        # Encode all chunks
+        # Encode all chunks (text already includes section_path prefix from chunker)
         texts = [chunk.text for chunk in self.chunks]
         embeddings = self.embeddings.encode(texts)
         if embeddings.ndim == 1:
