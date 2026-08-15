@@ -863,64 +863,8 @@ def _enforce_credit_limits(
     if promoted > 0:
         warnings.append(f"已将 {promoted} 门有课表的后置课程提升到课表中")
 
-    # Fill/expand meetings: ensure every recommended course has ALL time slots from offering
-    filled = 0
-    expanded = 0
-    for rc in final_recs:
-        rc_name = str(rc.get("course_name") or "").strip()
-        if not rc_name:
-            continue
-        matched = _find_matching_offering({"course_name": rc_name}, lookup)
-        if not matched:
-            continue
-        all_slots = matched.get("all_slots") or []
-        if not all_slots:
-            # fallback to single slot
-            dow = matched.get("day_of_week")
-            ss = matched.get("start_slot")
-            es = matched.get("end_slot")
-            if dow is not None and ss is not None and es is not None:
-                all_slots = [(dow, ss, es)]
-        if not all_slots:
-            continue
-
-        # Check which slots already exist for this course
-        existing_slots = {
-            (m.get("day_of_week"), m.get("start_slot"), m.get("end_slot"))
-            for m in final_meetings
-            if str(m.get("course_name") or "").strip() == rc_name
-        }
-        if not existing_slots:
-            # No meetings at all — create all from offering
-            n = _add_meetings_from_offering(rc, matched)
-            if n > 0:
-                filled += 1
-        else:
-            # Has some meetings — add missing slots
-            for dow, ss, es in all_slots:
-                if (dow, ss, es) not in existing_slots:
-                    meeting = dict(rc)
-                    meeting["day_of_week"] = dow
-                    meeting["start_slot"] = ss
-                    meeting["end_slot"] = es
-                    meeting["location"] = (meeting.get("location")
-                        or _get_offering_field(matched, "location", chinese="上课地点")
-                        or "待定")
-                    meeting["instructor"] = (meeting.get("instructor")
-                        or _get_offering_field(matched, "instructor", "teacher", chinese="教师")
-                        or "待定")
-                    meeting["weeks"] = (meeting.get("weeks")
-                        or _get_offering_field(matched, "weeks", chinese="周次")
-                        or "1-16周")
-                    if meeting.get("status"):
-                        meeting["status"] = "scheduled"
-                    final_meetings.append(meeting)
-                    expanded += 1
-
-    if filled > 0:
-        warnings.append(f"已为 {filled} 门课程自动补全课表时间（含多课节）")
-    if expanded > 0:
-        warnings.append(f"已为 {expanded} 个缺失课节补全时间")
+    # Note: Fill/expand meetings logic removed — course schedule JSON now ensures
+    # all entries have complete time slots.
 
     # Debug: log final state
     print(f"[CREDIT] final: {len(final_recs)} recs, {len(final_meetings)} meetings, total={total:.0f}cr")
