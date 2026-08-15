@@ -131,7 +131,7 @@ def deduplicate_by_class_and_code(courses: List[Dict[str, Any]]) -> List[Dict[st
                 teaching_class = parts[0] if len(parts) > 0 else "N/A"
                 course_code = parts[1] if len(parts) > 1 else "N/A"
                 
-                print(f"\n📚 重复课程:")
+                print(f"\n[DUP] 重复课程:")
                 print(f"   教学班: {teaching_class}")
                 print(f"   课程代码: {course_code}")
                 print(f"   出现次数: {len(duplicates) + 1} 次")
@@ -166,7 +166,7 @@ def deduplicate_by_class_and_code(courses: List[Dict[str, Any]]) -> List[Dict[st
         
         print(f"\n详细重复报告已保存至: {DUPLICATE_REPORT}")
     else:
-        print("\n✅ 没有发现重复的课程！所有课程的教学班+课程代码组合都是唯一的。")
+        print("\n[OK] 没有发现重复的课程！所有课程的教学班+课程代码组合都是唯一的。")
     
     # 移除临时添加的 _source_file 字段
     result_courses = []
@@ -186,7 +186,7 @@ def save_to_json(courses: List[Dict[str, Any]], output_path: Path):
     """保存为JSON文件"""
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(courses, f, ensure_ascii=False, indent=2)
-    print(f"\n✅ JSON已保存: {output_path}")
+    print(f"\n[OK] JSON已保存: {output_path}")
     print(f"   文件大小: {output_path.stat().st_size / 1024:.2f} KB")
 
 
@@ -213,7 +213,7 @@ def save_to_csv(courses: List[Dict[str, Any]], output_path: Path):
             row = {field: course.get(field, "") for field in fieldnames}
             writer.writerow(row)
     
-    print(f"✅ CSV已保存: {output_path}")
+    print(f"[OK] CSV已保存: {output_path}")
     print(f"   记录数: {len(courses)}")
 
 
@@ -229,7 +229,7 @@ def generate_statistics(courses: List[Dict[str, Any]]):
         dept = course.get("开课院系", "未知")
         dept_count[dept] += 1
     
-    print("\n📊 按开课院系统计（前10名）:")
+    print("\n[STATS] 按开课院系统计（前10名）:")
     sorted_depts = sorted(dept_count.items(), key=lambda x: x[1], reverse=True)[:10]
     for dept, count in sorted_depts:
         print(f"   {dept}: {count} 门课程")
@@ -240,7 +240,7 @@ def generate_statistics(courses: List[Dict[str, Any]]):
         course_category = course.get("课程类别", "未知")
         category_count[course_category] += 1
     
-    print("\n📊 按课程类别统计:")
+    print("\n[STATS] 按课程类别统计:")
     for course_category, count in sorted(category_count.items(), key=lambda x: x[1], reverse=True):
         print(f"   {course_category}: {count} 门课程")
     
@@ -250,12 +250,12 @@ def generate_statistics(courses: List[Dict[str, Any]]):
         language = course.get("授课语言", "未知")
         language_count[language] += 1
     
-    print("\n📊 按授课语言统计:")
+    print("\n[STATS] 按授课语言统计:")
     for language, count in sorted(language_count.items(), key=lambda x: x[1], reverse=True):
         print(f"   {language}: {count} 门课程")
     
     # 总课程数
-    print(f"\n📚 总课程数（去重后）: {len(courses)}")
+    print(f"\n[TOTAL] 总课程数（去重后）: {len(courses)}")
 
 
 def main():
@@ -306,7 +306,7 @@ def main():
         # 恢复标准输出并关闭文件
         sys.stdout = tee.terminal
         tee.close()
-        print(f"\n✅ 所有输出已保存到: {MERGE_REPORT}")
+        print(f"\n[OK] 所有输出已保存到: {MERGE_REPORT}")
 
 
 if __name__ == "__main__":

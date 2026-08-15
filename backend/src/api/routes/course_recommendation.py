@@ -23,7 +23,7 @@ from ...services.course_recommendation import (
 )
 from ...services.course_recommendation.tis_client import TisClientError
 from ...services.course_recommendation.validator import PlanValidator
-from ...services.course_recommendation.tools import (
+from ...agents.course_recommendation.tools import (
     CourseSearchIndex,
     set_search_index,
     clear_search_index,

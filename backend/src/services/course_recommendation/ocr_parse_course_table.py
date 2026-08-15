@@ -397,11 +397,11 @@ def batch_process_all_images(delay: float = 0.3):
         if result["success"]:
             success_count += 1
             course_count = len(result["data"])
-            print(f"  ✓ 成功，识别到 {course_count} 门课程")
-            print(f"  ✓ 保存至: {result['saved_to']}")
+            print(f"  [OK] 成功，识别到 {course_count} 门课程")
+            print(f"  [OK] 保存至: {result['saved_to']}")
         else:
             fail_count += 1
-            print(f"  ✗ 失败: {result['error'][:100]}")
+            print(f"  [FAIL] 失败: {result['error'][:100]}")
         
         if idx < len(to_process):
             time.sleep(delay)

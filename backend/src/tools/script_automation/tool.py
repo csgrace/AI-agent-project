@@ -88,7 +88,7 @@ def create_script(params: CreateScriptParams) -> str:
             # 将安全警告附加到响应中
             warning_lines = []
             for w in warnings:
-                warning_lines.append(f"  ⚠️ 第 {w['line']} 行: {w['message']}")
+                warning_lines.append(f"  [WARN] 第 {w['line']} 行: {w['message']}")
             response_data = json.loads(response)
             response_data["security_warnings"] = warning_lines
             response = json.dumps(response_data, ensure_ascii=False)
@@ -152,7 +152,7 @@ def update_script(params: UpdateScriptParams) -> str:
             response_data = json.loads(response)
             warning_lines = []
             for w in warnings:
-                warning_lines.append(f"  ⚠️ 第 {w['line']} 行: {w['message']}")
+                warning_lines.append(f"  [WARN] 第 {w['line']} 行: {w['message']}")
             response_data["security_warnings"] = warning_lines
             response = json.dumps(response_data, ensure_ascii=False)
 

@@ -151,7 +151,7 @@ class LLMService:
                 models_to_try.append(m)
                 tried.add(m)
 
-        print(f"Prompt length: {len(prompt)} chars [{label}], cascade: {' → '.join(models_to_try[:4])}")
+        print(f"Prompt length: {len(prompt)} chars [{label}], cascade: {' -> '.join(models_to_try[:4])}")
 
         # ── Attempt 1..N: primary client, multiple models ──────────
         if self.client:
@@ -252,7 +252,7 @@ class LLMService:
                 models_to_try.append(m)
                 tried.add(m)
 
-        print(f"Prompt length: {len(prompt)} chars [stream/{label}], cascade: {' → '.join(models_to_try[:4])}")
+        print(f"Prompt length: {len(prompt)} chars [stream/{label}], cascade: {' -> '.join(models_to_try[:4])}")
 
         # ── Attempt 1..N: primary client, multiple models ──────────
         if self.client:
@@ -484,7 +484,7 @@ class LLMService:
             return None
         return self._compact_answer(response, query_kind="chat")
 
-def generate_answer(
+    def generate_answer(
         self,
         question: str,
         citations: Sequence[SearchResult],

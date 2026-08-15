@@ -1,4 +1,4 @@
-﻿﻿"""Prompt helpers for the document QA RAG pipeline."""
+﻿"""Prompt helpers for the document QA RAG pipeline."""
 from __future__ import annotations
 
 from typing import Sequence

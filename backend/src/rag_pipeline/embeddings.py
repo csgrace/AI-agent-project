@@ -111,10 +111,10 @@ class SentenceTransformerEmbeddings:
         self._config_version = cfg.get_version()
 
         if self._client:
-            models_str = " → ".join(self._models[:3])
-            print(f"✅ Embedding client ready (models: {models_str})")
+            models_str = " -> ".join(self._models[:3])
+            print(f"[OK] Embedding client ready (models: {models_str})")
         else:
-            print("⚠️ No embedding client — API key not configured")
+            print("[WARN] No embedding client - API key not configured")
 
     @property
     def current_model(self) -> str:
@@ -137,7 +137,7 @@ class SentenceTransformerEmbeddings:
         batch_size = int(os.getenv("DOCUMENT_QA_EMBED_BATCH", "16"))
         out: List[np.ndarray] = []
 
-        print(f"📊 总计: {len(texts)} 条文本, 批次大小={batch_size}")
+        print(f"[BATCH] 总计: {len(texts)} 条文本, 批次大小={batch_size}")
 
         for i in range(0, len(texts), batch_size):
             batch = texts[i:i + batch_size]
@@ -156,13 +156,13 @@ class SentenceTransformerEmbeddings:
 
         for model in self._models:
             try:
-                print(f"  🔄 批次 {batch_num}: 尝试 {model} ({len(batch)} 条)...", end=" ", flush=True)
+                print(f"  [TRY] 批次 {batch_num}: 尝试 {model} ({len(batch)} 条)...", end=" ", flush=True)
                 result = self._call_embed(model, batch)
-                print(f"✅")
+                print(f"[OK]")
                 return result
             except Exception as e:
                 last_error = e
-                print(f"❌ {model} 失败: {e}")
+                print(f"[FAIL] {model} 失败: {e}")
                 continue
 
         raise RuntimeError(
@@ -195,7 +195,7 @@ class SentenceTransformerEmbeddings:
                 "请在 .env 中设置 DASHSCOPE_API_KEY。"
             )
 
-        print(f"🌐 使用嵌入模型 ({self.current_model}) 处理 {len(payload)} 条文本...")
+        print(f"[EMBED] 使用嵌入模型 ({self.current_model}) 处理 {len(payload)} 条文本...")
         emb = self._remote_embed(payload)
         # L2 normalize
         norms = np.linalg.norm(emb, axis=1, keepdims=True)
