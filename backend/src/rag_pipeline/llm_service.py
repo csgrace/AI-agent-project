@@ -484,7 +484,7 @@ class LLMService:
             return None
         return self._compact_answer(response, query_kind="chat")
 
-    def generate_answer(
+def generate_answer(
         self,
         question: str,
         citations: Sequence[SearchResult],
@@ -492,8 +492,13 @@ class LLMService:
         max_score: float | None = None,
         query_kind: str | None = None,
         mode: str | None = None,
+        memory_context: str = "",
     ) -> Optional[str]:
-        """生成回答，支持主备切换"""
+        """生成回答，支持主备切换
+
+        Args:
+            memory_context: 对话历史上下文，注入到 prompt 中支持多轮对话
+        """
         if query_kind is None and mode is not None:
             if mode == "chat":
                 query_kind = "chat"
@@ -507,6 +512,7 @@ class LLMService:
             citations,
             max_score=max_score,
             query_kind=query_kind,
+            memory_context=memory_context,
         )
 
         resolved_query_kind = (query_kind or mode or "unknown").strip().lower()

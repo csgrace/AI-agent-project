@@ -1,4 +1,4 @@
-﻿"""Prompt helpers for the document QA RAG pipeline."""
+﻿﻿"""Prompt helpers for the document QA RAG pipeline."""
 from __future__ import annotations
 
 from typing import Sequence
@@ -32,6 +32,7 @@ def build_rag_prompt(
     *,
     max_score: float | None = None,
     query_kind: str | None = None,
+    memory_context: str = "",
 ) -> str:
     context = format_context(citations)
 
@@ -39,35 +40,52 @@ def build_rag_prompt(
     resolved_max_score = max_score if max_score is not None else (max([c.score for c in citations]) if citations else 0.0)
     resolved_query_kind = (query_kind or "unknown").strip().lower()
 
+    # Inject conversation memory context if provided
+    memory_section = f"\n\n{memory_context}" if memory_context else ""
+
     if resolved_max_score < 0.35:
         return (
-            "Role: SUSTech Campus Assistant (General Chat Mode)\n"
-            f"#sym:max_score={resolved_max_score:.4f}\n"
-            f"#sym:query_kind={resolved_query_kind}\n\n"
-            f"Question: {question}\n\n"
-            "Task: Answer the user\"s question directly using your internal knowledge. "
-            "Since no high-quality PDF matches were found, be a helpful campus assistant. "
-            "Your identity is SUSTech Campus Assistant. Do NOT translate or rename it as any other university assistant. "
-            "Answer in one short paragraph. Avoid greetings, hedging, repeated wording, and follow-up questions. "
-            "Answer in Chinese (简体中文)."
+            "<system>\n"
+            "你是南方科技大学校园助手 SUSTech Campus Assistant。\n"
+            "</system>\n\n"
+            f"<mode>general_chat</mode>\n\n"
+            f"<reasoning>\n"
+            "知识库中没有找到与高置信度匹配的文档。"
+            "因此你应基于自身知识友好回答，不要提及信息来源。\n"
+            "</reasoning>\n"
+            f"{memory_section}\n\n"
+            f"<user_question>\n{question}\n</user_question>\n\n"
+            "<output_rules>\n"
+            "- 使用中文（简体中文）回答\n"
+            "- 简短一段话，最多三句话\n"
+            "- 不要问候、不要重复问题、不要使用问号结尾（除非是追问）\n"
+            "- 保持简洁、自然的语气\n"
+            "</output_rules>"
         )
 
     return (
-        "Role: SUSTech Campus Assistant (Grounded QA Mode)\n"
-        f"#sym:max_score={resolved_max_score:.4f}\n"
-        f"#sym:query_kind={resolved_query_kind}\n\n"
-        "Input Data (Context from Campus PDFs):\n"
-        f"{context}\n\n"
-        f"Question: {question}\n\n"
-        "Task:\n"
-        "You are SUSTech Campus Assistant. Do NOT rename yourself as any other university assistant.\n"
-        "Answer strictly based on the provided context.\n"
-        "Give the answer in one short paragraph, or at most three short sentences.\n"
-        "Prioritize the most directly relevant evidence. Do NOT include inline citations like (Source: ...) in your answer — sources are shown separately in the UI.\n"
-        "If the context is insufficient, say so once and ask one specific follow-up question.\n"
-        "Do not repeat the same fact with different wording, do not add a preface, and do not use headings or numbered lists unless the answer truly requires a list.\n"
-        "Never fabricate policies, dates, scores, deadlines, or procedures not present in context.\n"
-        "Output MUST be in Chinese (简体中文).\n"
+        "<system>\n"
+        "你是南方科技大学校园助手 SUSTech Campus Assistant。\n"
+        "</system>\n\n"
+        f"<mode>grounded_qa</mode>\n\n"
+        f"<confidence>\n"
+        f"max_score={resolved_max_score:.4f}, query_kind={resolved_query_kind}\n"
+        f"</confidence>\n\n"
+        "<task>\n"
+        "基于提供的校园文档上下文回答用户问题。"
+        "如果文档信息不足，如实说明并追问。\n"
+        "</task>\n\n"
+        f"<context>\n{context}\n</context>\n"
+        f"{memory_section}\n\n"
+        f"<user_question>\n{question}\n</user_question>\n\n"
+        "<output_rules>\n"
+        "- 答案严格基于上下文，不得编造\n"
+        "- 最多三句话，优先最相关证据\n"
+        "- 不要在答案中包含内嵌引用\n"
+        "- 如果信息不足，只说明一次并提出一个具体追问\n"
+        "- 不要重复同一事实、不要添加前言\n"
+        "- 输出语言：简体中文\n"
+        "</output_rules>"
     )
 
 

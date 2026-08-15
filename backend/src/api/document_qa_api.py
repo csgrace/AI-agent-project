@@ -10,6 +10,7 @@ import mimetypes
 
 from src.services.document_qa import DOCUMENTS_DIR
 from src.services.document_qa import get_document_qa_service
+from src.services.document_qa.memory import clear_session_memory
 from src.services.llm_config import LLMConfig
 
 router = APIRouter(prefix="/api/qa", tags=["document-qa"])
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/api/qa", tags=["document-qa"])
 class ChatRequest(BaseModel):
     message: str
     course_scope: str | None = None
+    session_id: str | None = None  # 会话ID，用于多轮对话记忆
 
 
 class SearchRequest(BaseModel):
@@ -105,7 +107,7 @@ def chat(req: ChatRequest):
         raise HTTPException(status_code=400, detail="message cannot be empty")
 
     service = get_document_qa_service()
-    result = service.answer_question(message, course_scope=req.course_scope)
+    result = service.answer_question(message, course_scope=req.course_scope, session_id=req.session_id)
 
     return ChatResponse(
         answer=result.answer,
@@ -127,7 +129,7 @@ async def chat_stream(req: ChatRequest):
     service = get_document_qa_service()
 
     async def event_generator():
-        async for event in iterate_in_threadpool(service.answer_question_stream(message, course_scope=req.course_scope)):
+        async for event in iterate_in_threadpool(service.answer_question_stream(message, course_scope=req.course_scope, session_id=req.session_id)):
             event_type = event.get("event", "unknown")
             if event_type == "status":
                 yield {
@@ -156,6 +158,13 @@ async def chat_stream(req: ChatRequest):
                 }
 
     return EventSourceResponse(event_generator())
+
+
+@router.post("/reset")
+def reset_memory(session_id: str):
+    """Clear conversation memory for a session."""
+    clear_session_memory(session_id)
+    return {"ok": True, "message": "会话记忆已清除"}
 
 
 @router.post("/search")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Generator, Optional
@@ -15,6 +16,7 @@ from ...rag_pipeline.prompt import (
     build_rag_prompt,
 )
 from ...rag_pipeline.vector_store import VectorStore
+from .memory import DocumentQAMemory, get_or_create_memory
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 STORAGE_DIR = BASE_DIR / "storage"
@@ -27,7 +29,13 @@ class QAService:
         self.llm_service = LLMService()
         self.chunks: list[ChunkRecord] = []
         self._index_ready = False
+        self._default_session_id = str(uuid.uuid4())
         self.load_index()
+
+    @property
+    def memory(self) -> DocumentQAMemory:
+        """Get the QA memory for the current default session."""
+        return get_or_create_memory(self._default_session_id)
 
     def load_index(self) -> bool:
         """Load persisted index from PostgreSQL."""
@@ -110,10 +118,22 @@ class QAService:
         k: int = 5,
         course_scope: str | None = None,
         similarity_threshold: float = 0.35,
+        session_id: Optional[str] = None,
     ) -> AnswerResult:
-        """Route between general chat and grounded QA while retaining #sym:max_score signal."""
+        """Route between general chat and grounded QA while retaining #sym:max_score signal.
+        
+        Args:
+            session_id: Optional session ID for conversation memory. If provided,
+                       previous QA context will be injected into the prompt.
+        """
         if not self._index_ready and not self.load_index():
             return self._fallback_no_index(query)
+
+        # Get conversation memory context
+        memory_context = ""
+        if session_id:
+            mem = get_or_create_memory(session_id)
+            memory_context = mem.get_context_str()
 
         results = self.vector_store.search(
             query,
@@ -202,11 +222,17 @@ class QAService:
             chosen_citations,
             max_score=max_score,
             query_kind=query_kind,
+            memory_context=memory_context,
         )
 
         final_answer = answer or "抱歉，我现在无法回答这个问题。"
         needs_clarification = (query_kind == "document") and (not use_rag)
         confidence = float(max_score if use_rag else routing.confidence)
+
+        # Record turn in memory
+        if session_id:
+            sources = [c.source_name for c in chosen_citations[:3]]
+            get_or_create_memory(session_id).add_turn(query, final_answer, sources)
 
         return AnswerResult(
             answer=final_answer,
@@ -235,6 +261,7 @@ class QAService:
         k: int = 5,
         course_scope: str | None = None,
         similarity_threshold: float = 0.35,
+        session_id: Optional[str] = None,
     ) -> Generator[dict, None, None]:
         """Stream the answer generation, yielding token events followed by metadata.
 
@@ -243,11 +270,20 @@ class QAService:
             {"event": "metadata", "data": { ... citations, confidence, etc. }}
             {"event": "done", "data": ""}
             {"event": "error", "data": "<error message>"}
+
+        Args:
+            session_id: Optional session ID for conversation memory.
         """
         # Phase 1: Load index
         if not self._index_ready and not self.load_index():
             yield {"event": "error", "data": "知识库索引不可用，请稍后再试。"}
             return
+
+        # Get conversation memory context
+        memory_context = ""
+        if session_id:
+            mem = get_or_create_memory(session_id)
+            memory_context = mem.get_context_str()
 
         yield {"event": "status", "data": "正在检索知识库..."}
 
@@ -368,6 +404,7 @@ class QAService:
             chosen_citations,
             max_score=max_score,
             query_kind=query_kind,
+            memory_context=memory_context,
         )
 
         resolved_query_kind = query_kind.strip().lower()
@@ -414,3 +451,8 @@ class QAService:
         }
         yield {"event": "metadata", "data": metadata}
         yield {"event": "done", "data": ""}
+
+        # Record turn in memory after stream completes
+        if session_id:
+            sources = [c.source_name for c in chosen_citations[:3]]
+            get_or_create_memory(session_id).add_turn(query, final_answer, sources)

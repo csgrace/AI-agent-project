@@ -12,6 +12,7 @@ from pydantic import SecretStr
 
 from ..agents import AgentRegistry, AgentRunner
 from ..agents.course_recommendation.agent import CourseRecommendationAgent
+from ..agents.course_recommendation.tools import get_course_recommendation_tools
 from ..agents.learning_assistant.agent import LearningAssistantAgent
 from ..agents.script_automation.agent import (
     ScriptAutomationAgent,
@@ -149,9 +150,14 @@ async def lifespan(app: FastAPI):
         print(f"[API] WARNING: Learning Assistant Agent initialization failed: {e}")
 
     try:
-        course_agent = CourseRecommendationAgent(llm, max_steps=2)
+        course_tools = get_course_recommendation_tools()
+        course_agent = CourseRecommendationAgent(
+            llm,
+            max_steps=8,
+            tools=course_tools,
+        )
         AgentRegistry.register("course_recommendation", course_agent)
-        print("[API] Course recommendation agent initialized successfully.")
+        print(f"[API] Course recommendation agent initialized with {len(course_tools)} tools, max_steps=8.")
     except Exception as e:
         print(f"[API] WARNING: Course Recommendation Agent initialization failed: {e}")
 

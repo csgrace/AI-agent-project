@@ -22,6 +22,13 @@ from ...services.course_recommendation import (
     infer_term_status,
 )
 from ...services.course_recommendation.tis_client import TisClientError
+from ...services.course_recommendation.validator import PlanValidator
+from ...services.course_recommendation.tools import (
+    CourseSearchIndex,
+    set_search_index,
+    clear_search_index,
+    get_course_recommendation_tools,
+)
 from ...services.document_qa import get_document_qa_service
 from ...rag_pipeline.llm_service import LLMService
 from ...services.course_recommendation.recommendation_engine import (
@@ -200,6 +207,44 @@ def _parse_requirement_values(raw_response: str) -> dict[str, Union[int, float, 
 
 
 def _fetch_graduation_requirements_sync(major: str) -> dict[str, Union[int, float, str]]:
+    """获取专业毕业要求学分。
+    
+    优化：直接从完整培养方案 PDF 提取文本作为上下文，
+    不再使用 RAG 切分召回（避免信息丢失）。
+    """
+    # 1. 尝试直接从完整 PDF 加载
+    full_text = _load_full_curriculum_text(major)
+    if full_text:
+        categories_str = "、".join(GRADUATION_REQUIREMENT_CATEGORIES)
+        prompt = f"""从以下完整的培养方案文本中提取各类课程的毕业学分要求。
+
+<curriculum_plan>
+{full_text}
+</curriculum_plan>
+
+<requested_categories>
+{categories_str}
+</requested_categories>
+
+<output_format>
+输出一个 JSON 对象，键为类别名称，值为数字（学分）。
+只输出 JSON，不要其他内容。
+</output_format>"""
+
+        llm = LLMService()
+        response = llm._chat_completion(
+            prompt,
+            temperature=0,
+            max_tokens=500,
+            label=f"grad_req_full_{major[:20]}",
+            model=llm.lightweight_model_name,
+            fallback_model=llm._lightweight_fallback_model,
+        )
+        result = _parse_requirement_values(response or "")
+        if result:
+            return result
+
+    # 2. Fallback: 使用 RAG 检索
     qa = get_document_qa_service()
     categories_str = "、".join(GRADUATION_REQUIREMENT_CATEGORIES)
     query = (
@@ -230,6 +275,19 @@ def _fetch_graduation_requirements_sync(major: str) -> dict[str, Union[int, floa
         fallback_model=llm._lightweight_fallback_model,
     )
     return _parse_requirement_values(response or "")
+
+
+def _load_full_curriculum_text(major: str) -> Optional[str]:
+    """加载完整培养方案 PDF 文本（不走 RAG）。
+    
+    培养方案 PDF 通常 15-20 页、约 6000 字符，
+    现代 LLM 上下文窗口可以完整容纳。
+    """
+    backend_root = Path(__file__).resolve().parents[3]
+    pdf_path = _find_program_pdf(backend_root, major)
+    if not pdf_path:
+        return None
+    return _extract_pdf_text(pdf_path, max_pages=25, max_chars=50000)
 
 
 def _find_program_pdf(backend_root: Path, major_name: str) -> Optional[Path]:
@@ -1124,6 +1182,32 @@ def _select_course_offerings_for_prompt(
     return selected
 
 
+def _format_curriculum_context(curriculum_plan_context: list[dict]) -> str:
+    """Format curriculum plan context chunks into readable text."""
+    if not curriculum_plan_context:
+        return "暂无培养方案信息"
+    parts = []
+    for chunk in curriculum_plan_context[:5]:
+        text = chunk.get("text", "").strip()
+        if text:
+            parts.append(text)
+    return "\n\n".join(parts) if parts else "暂无培养方案信息"
+
+
+def _format_completed_summary(completed_courses: list) -> str:
+    """Format completed courses into a readable summary."""
+    if not completed_courses:
+        return "无已修课程"
+    lines = []
+    for c in completed_courses[:20]:
+        name = getattr(c, 'course_name', str(c))
+        term = getattr(c, 'term_id', '')
+        lines.append(f"- {name} ({term})" if term else f"- {name}")
+    if len(completed_courses) > 20:
+        lines.append(f"... 等共 {len(completed_courses)} 门课程")
+    return "\n".join(lines)
+
+
 def _build_recommendation_agent_prompt(
     req: RecommendationRequest,
     profile,
@@ -1614,7 +1698,15 @@ def plan_courses(req: RecommendationRequest):
                 detail="Course recommendation agent is busy. Please wait.",
             )
 
+        # Set up search index for agent tools (enables multi-step agent loop)
+        search_index = CourseSearchIndex(offerings, [c.model_dump() for c in completed])
+        set_search_index(search_index)
+
         try:
+            # Build structured XML prompt for better instruction following
+            curriculum_text = _load_full_curriculum_text(req.major or "") or _format_curriculum_context(curriculum_plan_context)
+            completed_summary = _format_completed_summary(completed)
+            
             prompt = _build_recommendation_agent_prompt(
                 req,
                 profile,
@@ -1660,6 +1752,7 @@ def plan_courses(req: RecommendationRequest):
                     raw_response = ""
         finally:
             AgentRegistry.release(COURSE_RECOMMENDATION_AGENT_NAME)
+            clear_search_index()  # Clean up search index after request
 
         parsed = _parse_json_payload(raw_response)
         if not isinstance(parsed, dict):
@@ -1680,6 +1773,20 @@ def plan_courses(req: RecommendationRequest):
         )
 
         plan = RecommendationPlan.model_validate(parsed)
+
+        # ── Post-processing validation & auto-fix ───────────────────
+        completed_names = {c.course_name for c in completed}
+        validator = PlanValidator(
+            min_credits=req.min_credits,
+            max_credits=req.max_credits,
+            completed_course_names=completed_names,
+        )
+        validation_result = validator.validate(plan)
+        if not validation_result.is_valid:
+            print(f"[VALIDATOR] Issues found: {validation_result.issues}")
+            plan, fix_warnings = validator.auto_fix(plan)
+            plan.warnings.extend(fix_warnings)
+            print(f"[VALIDATOR] Auto-fix applied, final plan: {len(plan.recommended_courses)} courses")
     except Exception as e:
         import os
         import traceback

@@ -1,4 +1,8 @@
-"""Course recommendation agent powered by the shared create_agent runtime."""
+"""Course recommendation agent powered by the shared create_agent runtime.
+
+Uses XML-structured system prompt for better instruction following and
+multi-step tool execution (search → verify → validate → output).
+"""
 
 from __future__ import annotations
 
@@ -8,47 +12,7 @@ from langchain_core.messages import BaseMessage
 
 from ..agent_factory import build_agent
 from ..agent_runner import AgentRunner
-
-
-COURSE_RECOMMENDATION_SYSTEM_PROMPT = """You are a course recommendation agent for a university planning assistant.
-Your job is to generate a structured course plan from the provided student profile, completed courses, target term, and available course offerings.
-
-Rules:
-1. Do not use any local scoring code or hard-coded recommendation tables.
-2. Base the recommendation on the provided JSON context only.
-3. Prefer courses that fit the student's major, interests, career goal, recommendation note, and remaining graduation needs.
-4. Avoid recommending courses already completed or clearly conflicting with the target term schedule.
-5. If the available course offering list is incomplete, explain that uncertainty in warnings instead of inventing courses.
-6. When searching the full course table, do not require exact literal matches;
-  use course code, name fragments, Chinese/English aliases, instructor names,
-  and teaching class numbers as fuzzy match cues.
-7. Return exactly one JSON object and nothing else.
-
-Output schema:
-{
-  "term": {"term_id": str, "year": int, "semester": int, "label": str, "status": str},
-  "recommended_courses": [
-    {"course_id": str|null, "course_name": str, "credits": number|null, "score": number, "reason": str|null, "status": str, "source": str}
-  ],
-  "postponed_courses": [
-    {"course_id": str|null, "course_name": str, "credits": number|null, "score": number, "reason": str|null, "status": str, "source": str}
-  ],
-  "meetings": [
-    {"course_id": str|null, "course_name": str, "instructor": str|null, "location": str|null, "day_of_week": int, "start_slot": int, "end_slot": int, "weeks": str|null, "credits": number|null, "source": str, "metadata": object}
-  ],
-  "warnings": [str],
-  "rationale": str,
-  "graduation_check": {"status": str, "summary": str, "missing_courses": [str]}
-}
-
-Scoring guidance:
-1. Use scores in the 0-100 range.
-2. Highest scores should reflect the best fit among the available options.
-3. Each course's `reason` must be a complete, fluent Chinese sentence (20 characters or fewer) explaining why this course fits the student.
-   Example: "核心AI课程，匹配机器学习兴趣" instead of "匹配兴趣: 机器学习".
-4. The top-level `rationale` should be 2-3 concise Chinese sentences summarizing the overall recommendation strategy.
-5. If no suitable course is found, return empty recommendation lists and explain why.
-"""
+from .prompt_builder import COURSE_AGENT_SYSTEM_PROMPT
 
 
 class CourseRecommendationAgent:
@@ -59,7 +23,7 @@ class CourseRecommendationAgent:
         model,
         *,
         max_steps: int = 2,
-        system_prompt: str = COURSE_RECOMMENDATION_SYSTEM_PROMPT,
+        system_prompt: str = COURSE_AGENT_SYSTEM_PROMPT,
         tools: Optional[List[Any]] = None,
     ) -> None:
         self.model = model
