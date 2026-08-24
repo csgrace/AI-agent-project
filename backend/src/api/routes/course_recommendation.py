@@ -7,6 +7,8 @@ from typing import List, Optional, Union
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field, SecretStr
+from sse_starlette.sse import EventSourceResponse
+from starlette.concurrency import iterate_in_threadpool
 
 from ...agents.registry import AgentRegistry
 from ...services.course_recommendation import (
@@ -1762,6 +1764,318 @@ def plan_courses(req: RecommendationRequest):
         )
 
     return RecommendationResponse(plan=plan)
+
+
+# ─── Agent 工具名称 → 中文状态消息映射 ──────────────────────────────
+_TOOL_STATUS_MAP: dict[str, dict[str, str]] = {
+    "search_available_courses": {
+        "start": "正在搜索可用课程...",
+        "end": "课程搜索完成",
+    },
+    "check_course_eligibility": {
+        "start": "正在检查课程选修资格...",
+        "end": "资格检查完成",
+    },
+    "get_course_details": {
+        "start": "正在获取课程详情...",
+        "end": "课程详情获取完成",
+    },
+    "validate_schedule": {
+        "start": "正在验证课表冲突...",
+        "end": "冲突验证完成",
+    },
+    "query_curriculum_plan": {
+        "start": "正在查询培养方案...",
+        "end": "培养方案查询完成",
+    },
+}
+
+_DEFAULT_STATUS_MAP = {
+    "start": "正在执行工具调用...",
+    "end": "工具调用完成",
+}
+
+
+@router.post("/plan/stream")
+def plan_courses_stream(req: RecommendationRequest):
+    """SSE streaming endpoint for course recommendation progress."""
+
+    def _event(event_type: str, data: dict) -> dict:
+        return {"event": event_type, "data": json.dumps(data, ensure_ascii=False, default=str)}
+
+    def _status_message(msg: str) -> dict:
+        return _event("status", {"message": msg})
+
+    def _tool_event(tool_name: str, stage: str, extra: dict | None = None) -> dict:
+        mapping = _TOOL_STATUS_MAP.get(tool_name, _DEFAULT_STATUS_MAP)
+        label = mapping.get(stage, tool_name)
+        payload: dict = {"tool": tool_name, "stage": stage, "label": label}
+        if extra:
+            payload.update(extra)
+        return _event("tool_progress", payload)
+
+    async def event_generator():
+        try:
+            yield _status_message("正在加载学期课表数据...")
+
+            try:
+                schedule = fetch_term_schedule(req.term_id)
+            except TisClientError:
+                year_part, semester_part = req.term_id.split("-")
+                schedule = CourseSchedule(
+                    term=TermInfo(
+                        term_id=req.term_id,
+                        year=int(year_part),
+                        semester=1 if "春" in semester_part else 2,
+                        label=f"{year_part}年{semester_part}学期",
+                        status="future",
+                    ),
+                    meetings=[],
+                    source="generated",
+                )
+
+            completed = _load_completed_courses_from_schedule_dir(req.term_id)
+
+            yield _status_message("正在加载可选课程列表...")
+
+            try:
+                offerings = fetch_course_offerings(req.term_id)
+            except TisClientError:
+                offerings = []
+
+            full_table = _load_course_offerings_from_full_table()
+            if full_table:
+                existing_ids = {
+                    (str(o.get("course_id") or ""), str(o.get("课程名称") or o.get("course_name") or "").strip(),
+                     str(o.get("teaching_class") or o.get("教学班") or "").strip())
+                    for o in offerings
+                }
+                for course in full_table:
+                    key = (str(course.get("course_id") or ""),
+                           str(course.get("课程名称") or course.get("course_name") or "").strip(),
+                           str(course.get("teaching_class") or course.get("教学班") or "").strip())
+                    if key not in existing_ids:
+                        offerings.append(course)
+                        existing_ids.add(key)
+
+            by_name_kind: dict[tuple[str, str], list[dict]] = {}
+            for o in offerings:
+                name = str(o.get("课程名称") or o.get("course_name") or "").strip()
+                if not name:
+                    continue
+                kind = str(o.get("课程种类") or o.get("course_kind") or "").strip().lower()
+                if kind not in ("theory", "lab"):
+                    kind = "theory"
+                by_name_kind.setdefault((name, kind), []).append(o)
+
+            deduped_offerings: list[dict] = []
+            for (_name, _kind), items in by_name_kind.items():
+                if len(items) == 1:
+                    deduped_offerings.extend(items)
+                    continue
+                def _slot_count(offering: dict) -> int:
+                    raw = str(offering.get("上课信息") or "")
+                    return len(re.findall(r'星期[一二三四五六日]第\d+-\d+节', raw))
+                max_slots = max(_slot_count(item) for item in items)
+                best = [item for item in items if _slot_count(item) == max_slots]
+                deduped_offerings.extend(best[:1])
+
+            offerings = deduped_offerings
+
+            curriculum_plan_context = _load_curriculum_plan_context(req.major or "")
+            desired_courses = _extract_desired_courses_from_note(
+                req.recommendation_note,
+                offerings,
+            )
+
+            if req.min_credits < 0 or req.max_credits < 0:
+                raise HTTPException(status_code=400, detail="学分上下限必须为非负数")
+            if req.min_credits > req.max_credits:
+                raise HTTPException(status_code=400, detail="最低学分不能大于最高学分")
+
+            profile = build_student_profile(
+                completed,
+                major=req.major,
+                interests=req.interests,
+                career_goal=req.career_goal,
+                desired_courses=desired_courses,
+                recommendation_note=req.recommendation_note,
+            )
+
+            completed_course_sections = _split_completed_courses_by_term(
+                [course.model_dump(mode="json") for course in profile.completed_courses],
+                req.term_id,
+            )
+            offerings_for_prompt = _select_course_offerings_for_prompt(
+                offerings,
+                major=req.major,
+                desired_courses=desired_courses,
+                curriculum_plan_context=curriculum_plan_context,
+                limit=80,
+            )
+
+            agent = AgentRegistry.get(COURSE_RECOMMENDATION_AGENT_NAME)
+            if agent is None:
+                yield _status_message("推荐 Agent 未初始化，请检查后端配置")
+                yield _event("error", {"detail": "Course recommendation agent not initialized"})
+                return
+
+            if not AgentRegistry.acquire(COURSE_RECOMMENDATION_AGENT_NAME):
+                yield _status_message("推荐 Agent 正忙，请稍后再试")
+                yield _event("error", {"detail": "Course recommendation agent is busy"})
+                return
+
+            search_index = CourseSearchIndex(offerings, [c.model_dump() for c in completed])
+            set_search_index(search_index)
+
+            # ── Build prompt (same as non-streaming endpoint) ────────
+            curriculum_text = _load_full_curriculum_text(req.major or "") or _format_curriculum_context(curriculum_plan_context)
+            completed_summary = _format_completed_summary(completed)
+
+            prompt = _build_recommendation_agent_prompt(
+                req,
+                profile,
+                schedule,
+                offerings_for_prompt,
+                completed_course_sections,
+                curriculum_plan_context,
+                desired_courses,
+            )
+
+            yield _status_message("正在构建推荐方案...")
+
+            raw_response = ""
+            last_error: Exception | None = None
+
+            try:
+                cascade_models = list(dict.fromkeys(
+                    ["qwen3.7-plus", "qwen3.6-plus", "qwen3.7-max",
+                     "qwen3-235b-a22b-instruct-2507", "qwen-plus-2025-07-28",
+                     "qwen3.7-flash-2026-07-15", "deepseek-v4-flash-0731", "deepseek-r1"]
+                ))
+                for attempt, fallback_model in enumerate(cascade_models):
+                    if attempt > 0:
+                        yield _status_message(f"模型重试中 ({fallback_model})...")
+                        try:
+                            from langchain_openai import ChatOpenAI
+                            from ...services.llm_config import LLMConfig
+                            cfg = LLMConfig.get_instance()
+                            new_llm = ChatOpenAI(
+                                model=fallback_model,
+                                api_key=SecretStr(cfg.api_key or ""),
+                                base_url=cfg.base_url,
+                                temperature=0,
+                            )
+                            agent.reinitialize(new_llm)
+                        except Exception as e:
+                            continue
+
+                    try:
+                        # ── Stream the agent loop ──────────────────
+                        yield _status_message("Agent 开始多步推理...")
+
+                        tool_call_count = 0
+                        for event in agent.run_turn_stream(prompt):
+                            ev_type = event.get("event", "")
+
+                            if ev_type == "tool_call":
+                                tool_name = event.get("tool_name", "")
+                                tool_args = event.get("tool_args", {})
+                                tool_call_count += 1
+                                yield _status_message(
+                                    f"第 {tool_call_count} 步: "
+                                    f"{_TOOL_STATUS_MAP.get(tool_name, _DEFAULT_STATUS_MAP).get('start', tool_name)}"
+                                )
+                                yield _tool_event(tool_name, "start", {"args": tool_args})
+
+                            elif ev_type == "tool_result":
+                                tool_output = str(event.get("tool_output", ""))
+                                # 截取简短摘要作为状态
+                                summary = tool_output[:80].replace("\n", " ") + ("..." if len(tool_output) > 80 else "")
+                                yield _status_message(f"  → {summary}")
+                                yield _tool_event("", "end", {"summary": summary})
+
+                            elif ev_type == "thought":
+                                thought_text = str(event.get("text", ""))[:100]
+                                yield _event("thought", {"text": thought_text})
+
+                            elif ev_type == "error":
+                                yield _status_message(f"推理出错: {event.get('message', '')}")
+
+                        # Agent stream finished — get final result from agent
+                        from langchain_core.messages import AIMessage
+                        final_msg = None
+                        for msg in reversed(agent.messages):
+                            if isinstance(msg, AIMessage):
+                                tc = list(getattr(msg, "tool_calls", []) or [])
+                                if not tc:
+                                    final_msg = msg
+                                    break
+
+                        if final_msg:
+                            raw_response = getattr(final_msg, "content", "")
+                            if isinstance(raw_response, str):
+                                parsed = _parse_json_payload(raw_response)
+                                if isinstance(parsed, dict) and parsed.get("recommended_courses"):
+                                    break  # Success!
+
+                        # If no valid JSON reply, try reading from registry's last result
+                        if not raw_response:
+                            raise ValueError("Agent did not produce a valid recommendation JSON")
+
+                    except Exception as e:
+                        last_error = e
+                        print(f"[AGENT-STREAM] Model {fallback_model} failed: {e}")
+                        raw_response = ""
+            finally:
+                AgentRegistry.release(COURSE_RECOMMENDATION_AGENT_NAME)
+                clear_search_index()
+
+            # ── Parse & validate (same as non-streaming) ─────────────
+            yield _status_message("正在校验推荐结果...")
+
+            parsed = _parse_json_payload(raw_response)
+            if not isinstance(parsed, dict):
+                yield _status_message("推荐结果格式异常")
+                yield _event("error", {"detail": f"Agent response is not valid JSON: {raw_response[:500]}"})
+                return
+
+            parsed.setdefault("term", schedule.term.model_dump(mode="json"))
+            parsed = _sanitize_recommendation_payload(parsed, offerings)
+            parsed = _enforce_credit_limits(
+                parsed,
+                min_credits=req.min_credits,
+                max_credits=req.max_credits,
+                desired_courses=desired_courses,
+                offerings=offerings,
+            )
+
+            plan = RecommendationPlan.model_validate(parsed)
+
+            completed_names = {c.course_name for c in completed}
+            validator = PlanValidator(
+                min_credits=req.min_credits,
+                max_credits=req.max_credits,
+                completed_course_names=completed_names,
+            )
+            validation_result = validator.validate(plan)
+            if not validation_result.is_valid:
+                print(f"[PLAN-STREAM] Validation warnings: {validation_result.warnings}")
+
+            yield _status_message("课表推荐生成完成！")
+            yield _event("done", {"plan": plan.model_dump(mode="json")})
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"[PLAN-STREAM] Error: {e}")
+            import traceback
+            traceback.print_exc()
+            yield _status_message(f"生成失败: {e}")
+            yield _event("error", {"detail": str(e)})
+            yield _event("done", {})
+
+    return EventSourceResponse(event_generator())
 
 
 @router.post("/explain", response_model=ExplanationResponse)

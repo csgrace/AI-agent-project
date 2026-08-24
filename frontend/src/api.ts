@@ -461,6 +461,73 @@ export async function requestCoursePlan(payload: {
   return data.plan as RecommendationPlan;
 }
 
+// ====================================================================
+// Course Plan Streaming (SSE – shows live agent loop progress)
+// ====================================================================
+
+export interface CoursePlanStreamEvent {
+  event: string;
+  data: string;
+}
+
+/**
+ * Stream course plan generation with live progress updates.
+ * Yields `status` (progress text), `tool_progress` (tool call updates),
+ * `thought` (AI reasoning), `done` (contains the final plan), and `error`.
+ */
+export async function* streamCoursePlan(payload: {
+  term_id: string;
+  major?: string;
+  interests?: string[];
+  career_goal?: string;
+  recommendation_note?: string;
+  min_credits?: number;
+  max_credits?: number;
+  use_llm?: boolean;
+}): AsyncGenerator<CoursePlanStreamEvent> {
+  const res = await fetch(`${API_BASE}/course-recommendation/plan/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to stream course plan');
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error('No response stream');
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const dataStr = line.slice(6).trim();
+      if (!dataStr) continue;
+
+      try {
+        const parsed = JSON.parse(dataStr) as { event?: string; data?: unknown };
+        const eventType = parsed.event || 'message';
+        const eventData = typeof parsed.data === 'string'
+          ? parsed.data
+          : JSON.stringify(parsed.data || '', null, 0);
+        yield { event: eventType, data: eventData };
+      } catch {
+        yield { event: 'message', data: dataStr };
+      }
+    }
+  }
+}
+
 export async function fetchRecommendationExplanation(payload: {
   term_id: string;
   recommended_courses: Array<{ course_id?: string | null; course_name: string; credits?: number | null; status?: string | null; source?: string | null }>;

@@ -4,8 +4,9 @@ import {
   fetchCourseTerms,
   requestCoursePlan,
   fetchRecommendationExplanation,
+  streamCoursePlan,
   type CourseMeeting,
-  
+  type CoursePlanStreamEvent,
   type RecommendationPlan,
   type TermInfo,
 } from '../api'
@@ -181,9 +182,11 @@ const CourseRecommendation: React.FC<CourseRecommendationProps> = ({ initialMajo
   const [scheduleMeetings, setScheduleMeetings] = useState<CourseMeeting[]>([])
   const [plan, setPlan] = useState<RecommendationPlan | null>(null)
   const [loading, setLoading] = useState(false)
-  const [planning, setPlanning] = useState(false)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
+const [planning, setPlanning] = useState(false)
+const [planProgress, setPlanProgress] = useState<string>('')
+const [planSteps, setPlanSteps] = useState<string[]>([])
+const [message, setMessage] = useState('')
+const [error, setError] = useState('')
   const [termMenuOpen, setTermMenuOpen] = useState(false)
   const [recommendationModalOpen, setRecommendationModalOpen] = useState(false)
   const [recommendationTermId, setRecommendationTermId] = useState('')
@@ -448,9 +451,11 @@ const CourseRecommendation: React.FC<CourseRecommendationProps> = ({ initialMajo
     setError('')
     setRecommendationExplanation(null)
     setShowExplanation(false)
+    setPlanProgress('')
+    setPlanSteps([])
 
     try {
-      const payload = await requestCoursePlan({
+      const stream = streamCoursePlan({
         term_id: targetTermId,
         major: currentMajor.trim() || undefined,
         interests: [recommendationNote.trim(), `年级:${currentGrade}`].filter(Boolean),
@@ -461,11 +466,68 @@ const CourseRecommendation: React.FC<CourseRecommendationProps> = ({ initialMajo
         use_llm: true,
       })
 
-      console.log('推荐返回数据:', payload)
-      console.log('meetings数量:', payload.meetings?.length)
-      console.log('第一个meeting:', payload.meetings?.[0])
+      let finalPlan: RecommendationPlan | null = null
 
-      setPlan(payload)
+      for await (const evt of stream) {
+        switch (evt.event) {
+          case 'status': {
+            try {
+              const data = JSON.parse(evt.data) as { message?: string }
+              if (data.message) {
+                setPlanProgress(data.message)
+                setPlanSteps(prev => [...prev.slice(-8), data.message!])
+              }
+            } catch { /* ignore */ }
+            break
+          }
+          case 'thought': {
+            try {
+              const data = JSON.parse(evt.data) as { text?: string }
+              if (data.text) {
+                setPlanProgress(`🤔 ${data.text}`)
+              }
+            } catch { /* ignore */ }
+            break
+          }
+          case 'tool_progress': {
+            try {
+              const data = JSON.parse(evt.data) as { label?: string; tool?: string; summary?: string }
+              if (data.summary) {
+                setPlanProgress(`   → ${data.summary}`)
+              } else if (data.label) {
+                setPlanProgress(`🔧 ${data.label}`)
+              }
+            } catch { /* ignore */ }
+            break
+          }
+          case 'done': {
+            try {
+              const data = JSON.parse(evt.data) as { plan?: RecommendationPlan }
+              if (data.plan) {
+                finalPlan = data.plan as RecommendationPlan
+              }
+            } catch { /* ignore */ }
+            break
+          }
+          case 'error': {
+            try {
+              const data = JSON.parse(evt.data) as { detail?: string }
+              setRecommendationError(data.detail || '生成失败')
+            } catch { /* ignore */ }
+            break
+          }
+        }
+      }
+
+      if (!finalPlan) {
+        throw new Error('未能获取到推荐结果')
+      }
+
+      console.log('推荐返回数据:', finalPlan)
+      console.log('meetings数量:', finalPlan.meetings?.length)
+      console.log('第一个meeting:', finalPlan.meetings?.[0])
+
+      setPlan(finalPlan)
       
       // 获取推荐解释（新增）
       try {
@@ -1041,11 +1103,33 @@ const CourseRecommendation: React.FC<CourseRecommendationProps> = ({ initialMajo
               </div>
             </div>
 
+            {/* Live agent progress panel */}
+            {planning && planSteps.length > 0 && (
+              <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3 dark:border-emerald-800 dark:bg-emerald-950/40">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="relative flex h-3 w-3">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500"></span>
+                  </div>
+                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Agent 推理中</span>
+                </div>
+                <div className="max-h-24 overflow-y-auto space-y-0.5 text-[11px] text-emerald-800/80 dark:text-emerald-200/70">
+                  {planSteps.map((step, i) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <span className="text-emerald-500">›</span>
+                      <span className="truncate">{step}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={() => setRecommendationModalOpen(false)}
-                className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-200 dark:hover:bg-slate-800"
+                disabled={planning}
+                className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-200 dark:hover:bg-slate-800 disabled:opacity-50"
               >
                 取消
               </button>
@@ -1056,12 +1140,23 @@ const CourseRecommendation: React.FC<CourseRecommendationProps> = ({ initialMajo
                 className="rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {planning ? (
-                  <div className="flex items-center gap-2">
-                    <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    生成中...
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>{planProgress || '正在启动...'}</span>
+                    </div>
+                    {planSteps.length > 0 && (
+                      <div className="w-full max-w-xs text-center">
+                        <div className="flex flex-wrap justify-center gap-1 mb-1">
+                          {planSteps.slice(-5).map((_, i) => (
+                            <span key={i} className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" style={{ animationDelay: `${i * 150}ms` }} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   '生成课表推荐'
