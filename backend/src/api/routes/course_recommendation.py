@@ -1671,6 +1671,18 @@ def _generate_plan_with_engine(
     return plan
 
 
+def _offering_row_identity(offering: dict) -> tuple[str, str, str, str, str, str]:
+    """Identify one meeting row without collapsing another meeting of its class."""
+    return (
+        str(offering.get("course_id") or offering.get("课程代码") or "").strip(),
+        str(offering.get("course_name") or offering.get("课程名称") or "").strip(),
+        str(offering.get("teaching_class") or offering.get("教学班") or "").strip(),
+        str(offering.get("课程种类") or offering.get("course_kind") or "theory").strip().lower(),
+        str(offering.get("day_of_week") or ""),
+        f"{offering.get('start_slot') or ''}-{offering.get('end_slot') or ''}",
+    )
+
+
 def _build_agent_catalog(offerings: list[dict]) -> list[dict]:
     """Group raw offering rows into stable, authoritative teaching-class entries."""
     grouped: dict[str, dict] = {}
@@ -1914,57 +1926,20 @@ def plan_courses(req: RecommendationRequest):
     # Use (course_id, teaching_class) as dedup key to keep theory+lab variants.
     full_table = _load_course_offerings_from_full_table()
     if full_table:
-        existing_ids = {
-            (str(o.get("course_id") or ""), str(o.get("课程名称") or o.get("course_name") or "").strip(),
-             str(o.get("teaching_class") or o.get("教学班") or "").strip())
-            for o in offerings
-        }
+        existing_ids = {_offering_row_identity(item) for item in offerings}
         for course in full_table:
-            key = (str(course.get("course_id") or ""),
-                   str(course.get("课程名称") or course.get("course_name") or "").strip(),
-                   str(course.get("teaching_class") or course.get("教学班") or "").strip())
+            # The full table loader emits one row per meeting.  Include each
+            # distinct row so _build_agent_catalog can join every meeting back
+            # into the same teaching class.
+            key = _offering_row_identity(course)
             if key not in existing_ids:
                 offerings.append(course)
                 existing_ids.add(key)
 
-    # Dedup by (课程名称, 课程种类): for courses with both theory and lab,
-    # keep the best offering of EACH kind. Treat missing/empty 课程种类 as "theory".
-    # Supports both Chinese (full table) and English (PG search) field names.
-    by_name_kind: dict[tuple[str, str], list[dict]] = {}
-    for o in offerings:
-        name = str(o.get("课程名称") or o.get("course_name") or "").strip()
-        if not name:
-            continue
-        kind = str(o.get("课程种类") or o.get("course_kind") or "").strip().lower()
-        if kind not in ("theory", "lab"):
-            kind = "theory"
-        by_name_kind.setdefault((name, kind), []).append(o)
-
-    deduped_offerings: list[dict] = []
-    dropped = 0
-    for (_name, _kind), items in by_name_kind.items():
-        if len(items) == 1:
-            deduped_offerings.extend(items)
-            continue
-        # Count time slots for each offering
-        def _slot_count(offering: dict) -> int:
-            raw = str(offering.get("上课信息") or "")
-            return len(re.findall(r'星期[一二三四五六日]第\d+-\d+节', raw))
-        max_slots = max(_slot_count(item) for item in items)
-        # Keep only the first (best) offering per (name, kind) to avoid merging
-        # slots from unrelated teaching classes
-        best = [item for item in items if _slot_count(item) == max_slots]
-        kept = best[:1]
-        dropped += len(items) - len(kept)
-        deduped_offerings.extend(kept)
-
-    if dropped > 0:
-        print(f"[OFFER] Dropped {dropped} duplicate offering(s) (same name+kind)")
-    # Always use the deduplicated collection. Keeping the original list when
-    # nothing was dropped used to split one teaching class into partial rows.
-    offerings = deduped_offerings
-
-    print(f"[OFFER] {len(offerings)} courses (PG search + full table + dedup)")
+    # Do not collapse rows by course name: different rows may be different
+    # meetings of the same teaching class. Exact meeting duplicates are removed
+    # later when the authoritative catalog is assembled.
+    print(f"[OFFER] {len(offerings)} course meeting rows (PG search + full table)")
 
     curriculum_plan_context = _load_curriculum_plan_context(req.major or "")
     desired_courses = _extract_desired_courses_from_note(
@@ -2125,46 +2100,16 @@ def plan_courses_stream(req: RecommendationRequest):
 
             full_table = _load_course_offerings_from_full_table()
             if full_table:
-                existing_ids = {
-                    (str(o.get("course_id") or ""), str(o.get("课程名称") or o.get("course_name") or "").strip(),
-                     str(o.get("teaching_class") or o.get("教学班") or "").strip())
-                    for o in offerings
-                }
+                existing_ids = {_offering_row_identity(item) for item in offerings}
                 for course in full_table:
-                    key = (str(course.get("course_id") or ""),
-                           str(course.get("课程名称") or course.get("course_name") or "").strip(),
-                           str(course.get("teaching_class") or course.get("教学班") or "").strip())
+                    key = _offering_row_identity(course)
                     if key not in existing_ids:
                         offerings.append(course)
                         existing_ids.add(key)
 
-            by_name_kind: dict[tuple[str, str], list[dict]] = {}
-            for o in offerings:
-                name = str(o.get("课程名称") or o.get("course_name") or "").strip()
-                if not name:
-                    continue
-                kind = str(o.get("课程种类") or o.get("course_kind") or "").strip().lower()
-                if kind not in ("theory", "lab"):
-                    kind = "theory"
-                by_name_kind.setdefault((name, kind), []).append(o)
-
-            deduped_offerings: list[dict] = []
-            for (_name, _kind), items in by_name_kind.items():
-                if len(items) == 1:
-                    deduped_offerings.extend(items)
-                    continue
-
-                def _slot_count(offering: dict) -> int:
-                    raw = str(offering.get("上课信息") or "")
-                    return len(re.findall(r'星期[一二三四五六日]第\d+-\d+节', raw))
-
-                max_slots = max(_slot_count(item) for item in items)
-                best = [item for item in items if _slot_count(item) == max_slots]
-                deduped_offerings.extend(best[:1])
-
-            # Preserve the selected teaching class while grouping all of its
-            # meeting rows in _build_agent_catalog.
-            offerings = deduped_offerings
+            # Keep every distinct meeting row. _build_agent_catalog merges rows
+            # for a selected teaching class and is the only place that deduplicates
+            # identical meetings.
 
             curriculum_plan_context = _load_curriculum_plan_context(req.major or "")
             desired_courses = _extract_desired_courses_from_note(
