@@ -1683,6 +1683,9 @@ def _build_agent_catalog(offerings: list[dict]) -> list[dict]:
         kind = str(raw.get("课程种类") or raw.get("course_kind") or "theory").strip().lower()
         if kind not in {"theory", "lab"}:
             kind = "theory"
+        # Raw rows can represent separate meetings of the same teaching class.
+        # The schedule text must not become part of this key, otherwise one class
+        # is split and the UI receives only its first meeting.
         key = "::".join((course_id or _normalize_course_key(name), teaching_class or name, kind))
         item = grouped.setdefault(key, {
             "offering_id": f"offering::{key}",
@@ -1717,6 +1720,7 @@ def _plan_from_offering_ids(
     catalog: list[dict],
     selected_ids: list[str],
     rationale: str,
+    course_reasons: dict[str, str],
     warnings: list[str],
 ) -> RecommendationPlan:
     by_id = {item["offering_id"]: item for item in catalog}
@@ -1724,7 +1728,9 @@ def _plan_from_offering_ids(
     recommended: list[RecommendedCourse] = []
     meetings: list[CourseMeeting] = []
     for item in selected:
-        reason = "由 Agent 根据用户需求、培养方案和约束校验选择。"
+        reason = str(course_reasons.get(item["offering_id"]) or "").strip()
+        if not reason:
+            reason = f"《{item['course_name']}》与本学期的专业学习目标和用户偏好相匹配，可用于补足相关能力与学分。"
         recommended.append(RecommendedCourse(
             course_id=item.get("course_id"),
             course_name=item["course_name"],
@@ -1856,6 +1862,11 @@ def _run_constrained_agent_plan(
             catalog=catalog,
             selected_ids=selected_ids,
             rationale=str(parsed.get("rationale") or ""),
+            course_reasons={
+                str(key): str(value).strip()
+                for key, value in (parsed.get("course_reasons") or {}).items()
+                if isinstance(key, str) and isinstance(value, str) and value.strip()
+            } if isinstance(parsed.get("course_reasons"), dict) else {},
             warnings=[str(item) for item in parsed.get("warnings", []) if isinstance(item, str)],
         )
         result = validator.validate(plan)
@@ -1948,8 +1959,10 @@ def plan_courses(req: RecommendationRequest):
         deduped_offerings.extend(kept)
 
     if dropped > 0:
-        print(f"[OFFER] Dropped {dropped} course(s) with fewer time slots (same name+kind)")
-        offerings = deduped_offerings
+        print(f"[OFFER] Dropped {dropped} duplicate offering(s) (same name+kind)")
+    # Always use the deduplicated collection. Keeping the original list when
+    # nothing was dropped used to split one teaching class into partial rows.
+    offerings = deduped_offerings
 
     print(f"[OFFER] {len(offerings)} courses (PG search + full table + dedup)")
 
@@ -2149,6 +2162,8 @@ def plan_courses_stream(req: RecommendationRequest):
                 best = [item for item in items if _slot_count(item) == max_slots]
                 deduped_offerings.extend(best[:1])
 
+            # Preserve the selected teaching class while grouping all of its
+            # meeting rows in _build_agent_catalog.
             offerings = deduped_offerings
 
             curriculum_plan_context = _load_curriculum_plan_context(req.major or "")

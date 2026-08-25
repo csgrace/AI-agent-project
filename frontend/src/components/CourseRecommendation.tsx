@@ -826,9 +826,6 @@ setAgentStep({ current: 0, label: '' })
                   const span = Math.max(1, meeting.end_slot! - meeting.start_slot! + 1)
                   const colorKey = baseCourseName(meeting.course_name) || meeting.course_name
                   const colorStyle = colorFromText(colorKey)
-                  const meetingReasonRaw = meeting.metadata?.['reason']
-                  const meetingReason = typeof meetingReasonRaw === 'string' ? meetingReasonRaw : ''
-
                   return (
                     <div
                       key={`${meeting.course_name}-${index}`}
@@ -847,7 +844,6 @@ setAgentStep({ current: 0, label: '' })
                         {meeting.location || '待定'} {meeting.instructor ? `· ${meeting.instructor}` : ''}
                       </p>
                       {meeting.weeks && <p className="mt-1 text-[12px] opacity-80">{meeting.weeks}</p>}
-                      {meetingReason && <p className="mt-1 text-[10px] opacity-75">{meetingReason}</p>}
                     </div>
                   )
                 })}

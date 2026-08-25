@@ -16,6 +16,7 @@ COURSE_AGENT_SYSTEM_PROMPT = """<role>
 - 你只能选择工具返回的 offering_id。严禁编造、猜测或修改课程、教学班、
   学分、教师、地点和上课时间。
 - 不要输出 meetings；服务端会从权威课程数据组装课表。
+- 必须为每个 selected_offering_ids 中的 ID 在 course_reasons 内提供具体中文理由（20-40字）。理由要结合用户明确需求、专业/培养方案或课程能力，不要写“由 Agent 选择”“符合约束”等空泛表述。
 - 如果用户输入中包含 validation_feedback，必须根据其中的问题改变选择，
   不能原样重复无效选择。
 - 最终只输出一个 JSON 对象，不要 markdown 或额外说明。
@@ -32,6 +33,7 @@ COURSE_AGENT_SYSTEM_PROMPT = """<role>
 {
   "selected_offering_ids": ["工具返回的 offering_id"],
   "postponed_offering_ids": [],
+  "course_reasons": {"offering_id": "该课程具体推荐理由（20-40字）"},
   "rationale": "2-3句中文推荐策略",
   "warnings": ["可选的非阻断提示"]
 }
