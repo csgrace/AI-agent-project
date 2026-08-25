@@ -6,11 +6,10 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 from starlette.concurrency import iterate_in_threadpool
 
-from ...agents.registry import AgentRegistry
 from ...services.course_recommendation import (
     CompletedCourse,
     CourseSchedule,
@@ -25,12 +24,6 @@ from ...services.course_recommendation import (
 )
 from ...services.course_recommendation.tis_client import TisClientError
 from ...services.course_recommendation.validator import PlanValidator
-from ...agents.course_recommendation.tools import (
-    CourseSearchIndex,
-    set_search_index,
-    clear_search_index,
-    get_course_recommendation_tools,
-)
 from ...services.document_qa import get_document_qa_service
 from ...rag_pipeline.llm_service import LLMService
 from ...services.course_recommendation.recommendation_engine import (
