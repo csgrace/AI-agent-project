@@ -6,6 +6,16 @@ import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { streamCampusQa } from '../api'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+const CAMPUS_QA_SESSION_STORAGE_KEY = 'sustech-campus-qa-session-id'
+
+const getCampusQaSessionId = (): string => {
+  const existingSessionId = window.sessionStorage.getItem(CAMPUS_QA_SESSION_STORAGE_KEY)
+  if (existingSessionId) return existingSessionId
+
+  const sessionId = crypto.randomUUID()
+  window.sessionStorage.setItem(CAMPUS_QA_SESSION_STORAGE_KEY, sessionId)
+  return sessionId
+}
 
 interface QaCitation {
   source_name: string;
@@ -133,6 +143,7 @@ const CampusAssistant: React.FC<CampusAssistantProps> = ({ llmAvailable = true }
   const [pdfPreviewError, setPdfPreviewError] = useState<string | null>(null);
   const [confidenceTooltip, setConfidenceTooltip] = useState<{ x: number; y: number; visible: boolean }>({ x: 0, y: 0, visible: false });
   const campusChatEndRef = useRef<HTMLDivElement>(null);
+  const campusSessionIdRef = useRef<string>(getCampusQaSessionId());
 
   useEffect(() => {
     campusChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -233,7 +244,7 @@ const CampusAssistant: React.FC<CampusAssistantProps> = ({ llmAvailable = true }
       let accumulatedContent = ''
       let typingActive = true
 
-      for await (const sseEvent of streamCampusQa(trimmedInput)) {
+      for await (const sseEvent of streamCampusQa(trimmedInput, undefined, campusSessionIdRef.current)) {
         switch (sseEvent.event) {
           case 'status':
             setCampusMessages((prev) =>

@@ -361,11 +361,19 @@ export interface CampusQaStreamEvent {
   data: string;
 }
 
-export async function* streamCampusQa(message: string, courseScope?: string | null): AsyncGenerator<CampusQaStreamEvent> {
+export async function* streamCampusQa(
+  message: string,
+  courseScope?: string | null,
+  sessionId?: string,
+): AsyncGenerator<CampusQaStreamEvent> {
   const res = await fetch(`${API_BASE}/qa/chat/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, course_scope: courseScope }),
+    body: JSON.stringify({
+      message,
+      course_scope: courseScope,
+      session_id: sessionId,
+    }),
   });
 
   if (!res.ok) {
