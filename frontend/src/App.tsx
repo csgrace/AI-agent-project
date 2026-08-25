@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import StatusBar from './components/StatusBar'
 import SchedulePlanner from './components/SchedulePlanner'
 import CampusAssistant from './components/CampusAssistant'
@@ -6,26 +6,38 @@ import LearningAssistant from './components/LearningAssistant'
 import ScriptAutomation from './components/ScriptAutomation'
 import CourseRecommendation from './components/CourseRecommendation'
 import PersonalPanel from './components/PersonalPanel'
+import HelpCenter from './components/HelpCenter'
+import SettingsModal from './components/SettingsModal'
 import { fetchLLMStatus } from './api'
 
 function App() {
-  const [darkMode, setDarkMode] = useState(false)
+  const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true')
   const [activeTab, setActiveTab] = useState('calendar')
   const [showProfile, setShowProfile] = useState(false)
+  const [showHelpCenter, setShowHelpCenter] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const [userName, setUserName] = useState(localStorage.getItem('userName') || '')
   const [userStudentId, setUserStudentId] = useState(localStorage.getItem('userStudentId') || '')
   const [userMajor, setUserMajor] = useState(localStorage.getItem('userMajor') || '')
   const [userGrade] = useState(localStorage.getItem('userGrade') || '大三')
   const [llmAvailable, setLlmAvailable] = useState(true)
-
   // ── Dark mode ──────────────────────────────────────────────────
   useEffect(() => {
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setDarkMode(true);
+    // Only use system preference if user hasn't set a preference
+    const storedDarkMode = localStorage.getItem('darkMode')
+    if (storedDarkMode === null && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setDarkMode(true)
+      localStorage.setItem('darkMode', 'true')
     }
   }, [])
 
-  const toggleDarkMode = () => setDarkMode(!darkMode)
+  const toggleDarkMode = useCallback(() => {
+    setDarkMode((prev) => {
+      const newValue = !prev
+      localStorage.setItem('darkMode', String(newValue))
+      return newValue
+    })
+  }, [])
 
   // ── Check LLM availability from backend on page load ──────────
   useEffect(() => {
@@ -57,6 +69,37 @@ function App() {
   }
 
   const handleOpenProfile = () => setShowProfile(true)
+
+  // ── Keyboard shortcuts ─────────────────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+1~5 - Switch between main tabs
+      if (e.ctrlKey && ['1', '2', '3', '4', '5'].includes(e.key)) {
+        e.preventDefault()
+        const tabMap: Record<string, string> = {
+          '1': 'calendar',
+          '2': 'campus',
+          '3': 'learning',
+          '4': 'script',
+          '5': 'course',
+        }
+        setActiveTab(tabMap[e.key])
+      }
+      // Ctrl+D - Toggle dark mode
+      if (e.ctrlKey && e.key === 'd') {
+        e.preventDefault()
+        toggleDarkMode()
+      }
+      // Esc - Close all modals
+      if (e.key === 'Escape') {
+        setShowHelpCenter(false)
+        setShowSettings(false)
+        setShowProfile(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [toggleDarkMode])
 
   return (
     <div className={`h-screen overflow-hidden flex flex-col ${darkMode ? 'dark' : ''} bg-gray-100 dark:bg-slate-950`}>
@@ -133,17 +176,23 @@ function App() {
             <h2 className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 tracking-widest mb-4 px-2">辅助功能</h2>
             <ul className="space-y-2">
               <li>
-                <a href="#" className="block w-full text-left px-4 py-3 rounded-2xl transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+                <button
+                  onClick={() => setShowHelpCenter(true)}
+                  className="w-full text-left px-4 py-3 rounded-2xl transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                >
                   <span className="inline-flex items-center gap-2 text-sm font-medium">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9a3 3 0 115.544 1.5c-.901.83-1.272 1.27-1.272 2.25M12 17h.01" />
                     </svg>
                     帮助中心
                   </span>
-                </a>
+                </button>
               </li>
               <li>
-                <a href="#" className="block w-full text-left px-4 py-3 rounded-2xl transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="w-full text-left px-4 py-3 rounded-2xl transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                >
                   <span className="inline-flex items-center gap-2 text-sm font-medium">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317a1 1 0 011.35-.936l1.94.776a1 1 0 00.768 0l1.94-.776a1 1 0 011.35.936l.132 2.077a1 1 0 00.548.82l1.78.89a1 1 0 01.486 1.486l-1.15 1.734a1 1 0 000 .924l1.15 1.734a1 1 0 01-.486 1.486l-1.78.89a1 1 0 00-.548.82l-.132 2.077a1 1 0 01-1.35.936l-1.94-.776a1 1 0 00-.768 0l-1.94.776a1 1 0 01-1.35-.936l-.132-2.077a1 1 0 00-.548-.82l-1.78-.89a1 1 0 01-.486-1.486l1.15-1.734a1 1 0 000-.924l-1.15-1.734a1 1 0 01.486-1.486l1.78-.89a1 1 0 00.548-.82l.132-2.077z" />
@@ -151,7 +200,7 @@ function App() {
                     </svg>
                     系统设置
                   </span>
-                </a>
+                </button>
               </li>
             </ul>
           </div>
@@ -165,6 +214,19 @@ function App() {
           <div className={activeTab === 'course' ? 'h-full' : 'h-full hidden'}><CourseRecommendation initialMajor={userMajor} initialGrade={userGrade} /></div>
         </div>
       </div>
+
+      {/* Help Center Modal */}
+      {showHelpCenter && <HelpCenter onClose={() => setShowHelpCenter(false)} />}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <SettingsModal
+          onClose={() => setShowSettings(false)}
+          darkMode={darkMode}
+          onToggleDarkMode={toggleDarkMode}
+        />
+      )}
+
     </div>
   )
 }
