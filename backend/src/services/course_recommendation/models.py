@@ -18,9 +18,9 @@ class CourseMeeting(BaseModel):
     course_name: str
     instructor: Optional[str] = None
     location: Optional[str] = None
-    day_of_week: int = Field(ge=1, le=7)
-    start_slot: int = Field(ge=1, le=11)
-    end_slot: int = Field(ge=1, le=11)
+    day_of_week: Optional[int] = Field(default=None, ge=1, le=7)
+    start_slot: Optional[int] = Field(default=None, ge=1, le=11)
+    end_slot: Optional[int] = Field(default=None, ge=1, le=11)
     weeks: Optional[str] = None
     credits: Optional[float] = None
     source: str = "tis"
@@ -50,6 +50,7 @@ class StudentProfile(BaseModel):
     career_goal: Optional[str] = None
     desired_courses: List[str] = Field(default_factory=list)
     recommendation_note: Optional[str] = None
+    avoid_time_slots: Optional[str] = None  # 用户希望避开的时间段，如"周一1-2节"
     completed_courses: List[CompletedCourse] = Field(default_factory=list)
 
 

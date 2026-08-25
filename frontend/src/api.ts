@@ -1,4 +1,11 @@
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+// Resolve API base URL at runtime:
+// 1. window.__APP_CONFIG__.API_BASE (from public/config.js) — override at deploy time
+// 2. import.meta.env.VITE_API_URL — baked in at build time
+// 3. '/api' — fallback (works with Vite dev server proxy)
+const API_BASE: string =
+  (typeof window !== "undefined" && (window as any).__APP_CONFIG__?.API_BASE) ||
+  import.meta.env.VITE_API_URL ||
+  '/api';
 
 export interface CalendarEvent {
   id: string;
@@ -100,13 +107,15 @@ export interface CourseMeeting {
   course_name: string;
   instructor?: string | null;
   location?: string | null;
-  day_of_week: number;
-  start_slot: number;
-  end_slot: number;
+  day_of_week?: number | null;
+  start_slot?: number | null;
+  end_slot?: number | null;
   weeks?: string | null;
   credits?: number | null;
   source: string;
   metadata: Record<string, unknown>;
+  /** Backend flag indicating this course has no schedule info yet */
+  _missing_schedule?: boolean;
 }
 
 export interface CourseSchedule {
@@ -509,20 +518,15 @@ export async function* streamCoursePlan(payload: {
     const lines = buffer.split('\n');
     buffer = lines.pop() || '';
 
+    let currentEvent = '';
     for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      const dataStr = line.slice(6).trim();
-      if (!dataStr) continue;
-
-      try {
-        const parsed = JSON.parse(dataStr) as { event?: string; data?: unknown };
-        const eventType = parsed.event || 'message';
-        const eventData = typeof parsed.data === 'string'
-          ? parsed.data
-          : JSON.stringify(parsed.data || '', null, 0);
-        yield { event: eventType, data: eventData };
-      } catch {
-        yield { event: 'message', data: dataStr };
+      if (line.startsWith('event:')) {
+        currentEvent = line.slice(6).trim();
+      } else if (line.startsWith('data:')) {
+        const data = line.slice(5).trim();
+        if (data) {
+          yield { event: currentEvent, data };
+        }
       }
     }
   }

@@ -216,6 +216,7 @@ def build_student_profile(
     career_goal: str | None = None,
     desired_courses: list[str] | None = None,
     recommendation_note: str | None = None,
+    avoid_time_slots: str | None = None,
 ) -> StudentProfile:
     return StudentProfile(
         major=major,
@@ -223,6 +224,7 @@ def build_student_profile(
         career_goal=career_goal,
         desired_courses=desired_courses or [],
         recommendation_note=recommendation_note,
+        avoid_time_slots=avoid_time_slots,
         completed_courses=list(completed_courses),
     )
 
@@ -532,8 +534,18 @@ def plan_schedule_with_llm(
         course_aliases.update(_course_name_aliases(full_name))
         return _course_name_matches(keyword, course_aliases)
 
-    # 4. 解析避开时间段（如果用户有输入）
-    avoid_slots = parse_avoid_time_slots(profile.career_goal or "")
+    # 4. 解析避开时间段（优先使用显式字段，其次从 recommendation_note 提取）
+    # 注意：不使用 career_goal 字段，那个是职业目标不是时间偏好
+    avoid_text = profile.avoid_time_slots or ""
+    if not avoid_text and profile.recommendation_note:
+        # 尝试从用户建议中提取时间偏好
+        time_patterns = [r"避开(.+?)(?:，|。|；|$)", r"不要(.+?)(?:，|。|；|$)", r"避免(.+?)(?:，|。|；|$)"]
+        for pat in time_patterns:
+            m = re.search(pat, profile.recommendation_note)
+            if m:
+                avoid_text = m.group(1).strip()
+                break
+    avoid_slots = parse_avoid_time_slots(avoid_text) if avoid_text else []
 
     # 5. 过滤课程：排除已修、排除冲突，区分必须课程和普通课程
     available: list[dict[str, Any]] = []
@@ -608,9 +620,14 @@ def plan_schedule_with_llm(
                         return True
         return False
 
+    def _remove_selected(course: dict[str, Any]) -> None:
+        """Remove a course from selected_courses list."""
+        if course not in selected_courses:
+            return
+        selected_courses.remove(course)
+
     def _evict_non_required_conflicts(course: dict[str, Any], selected: list[dict[str, Any]], protected_cores: set[str]) -> None:
         """Remove non-protected selected courses that conflict with `course` to make room."""
-        nonlocal total_credits
         made_change = False
         for sel in list(selected):
             core_sel = extract_core_name(str(sel.get("课程名称") or ""))
@@ -764,19 +781,8 @@ def plan_schedule_with_llm(
         kind = _course_kind(c)
         core_selected.setdefault(core, {}).setdefault(kind, []).append(c)
 
-    def _remove_selected(course: dict[str, Any]) -> None:
-        if course not in selected_courses:
-            return
-        try:
-            credits_r = float(course.get("学分", 3.0))
-        except (TypeError, ValueError):
-            credits_r = 3.0
-        selected_courses.remove(course)
-        # total_credits is computed later as unique-name sum; do not maintain incremental raw sum here.
-
     def _free_room_for(credits_needed: float, protected_cores: set[str]) -> bool:
         """Remove non-protected selected courses from the end until enough room exists."""
-        nonlocal total_credits
         # operate on unique-name credit sum
         current = _unique_credits_sum(selected_courses)
         if current + credits_needed <= max_credits:

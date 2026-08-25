@@ -76,6 +76,7 @@ class RecommendationRequest(BaseModel):
     interests: List[str] = Field(default_factory=list)
     career_goal: Optional[str] = None
     recommendation_note: Optional[str] = None
+    avoid_time_slots: Optional[str] = None  # e.g. "周一1-2节，周三3-4节"
     min_credits: int = 0
     max_credits: int = 18
     use_llm: bool = True
@@ -791,6 +792,7 @@ def _enforce_credit_limits(
     # Sync meetings: fuzzy-match against final recommended courses
     def _name_match(meeting_name: str, course_names: set[str]) -> bool:
         mn = _normalize_text(meeting_name)
+        mn_core = _normalize_text(re.sub(r"[（(].*", "", meeting_name))
         if not mn:
             return False
         for cn in course_names:
@@ -799,16 +801,20 @@ def _enforce_credit_limits(
                 continue
             if mn == cn_norm or mn in cn_norm or cn_norm in mn:
                 return True
-            # Also try matching core name (before parentheses)
+            # Also try matching core name (before parentheses — both CN （ and EN ()
             cn_core = _normalize_text(re.sub(r"[（(].*", "", cn))
-            if cn_core and (mn == cn_core or cn_core in mn or mn in cn_core):
+            if cn_core and mn_core and (
+                mn_core == cn_core
+                or cn_core in mn_core
+                or mn_core in cn_core
+            ):
                 return True
         return False
 
     final_names = {str(c.get("course_name") or "").strip() for c in final_recs}
     final_meetings = [
         m for m in meetings
-        if _name_match(str(m.get("course_name") or ""), final_names)
+        if m.get("_missing_schedule") or _name_match(str(m.get("course_name") or ""), final_names)
     ]
 
     # Build offering lookup for schedule promotion
@@ -865,8 +871,59 @@ def _enforce_credit_limits(
     if promoted > 0:
         warnings.append(f"已将 {promoted} 门有课表的后置课程提升到课表中")
 
-    # Note: Fill/expand meetings logic removed — course schedule JSON now ensures
-    # all entries have complete time slots.
+    # Fallback: ensure every recommended course has at least one meeting entry
+    # (even if schedule is unknown — frontend renders as "待确认")
+    lookup = _build_course_offering_lookup(offerings)
+    existing_meeting_cores = set()
+    for m in final_meetings:
+        cname = str(m.get("course_name") or "").strip()
+        if cname:
+            existing_meeting_cores.add(_normalize_text(cname))
+            core = _normalize_text(re.sub(r"[（(].*", "", cname))
+            if core:
+                existing_meeting_cores.add(core)
+
+    for course in final_recs:
+        cname = str(course.get("course_name") or "").strip()
+        if not cname:
+            continue
+        norm = _normalize_text(cname)
+        core = _normalize_text(re.sub(r"[（(].*", "", cname))
+        if norm in existing_meeting_cores or core in existing_meeting_cores:
+            continue
+        # Try to find schedule from offerings
+        matched = _find_matching_offering({"course_name": cname}, lookup)
+        if matched:
+            raw_sched = str(matched.get("上课信息") or "")
+            parsed_slots = _parse_raw_schedule_slots(raw_sched)
+            if parsed_slots:
+                for dow, ss, es in parsed_slots:
+                    m = dict(course)
+                    m["day_of_week"] = dow
+                    m["start_slot"] = ss
+                    m["end_slot"] = es
+                    m["location"] = (m.get("location") or matched.get("location")
+                        or _get_offering_field(matched, "location", chinese="上课地点") or "待定")
+                    m["instructor"] = (m.get("instructor")
+                        or _get_offering_field(matched, "instructor", "teacher", chinese="教师") or "待定")
+                    m["weeks"] = m.get("weeks") or "1-16周"
+                    m["status"] = "scheduled"
+                    final_meetings.append(m)
+                existing_meeting_cores.add(norm)
+                if core:
+                    existing_meeting_cores.add(core)
+                continue
+        # No schedule found — create placeholder
+        m = dict(course)
+        m["day_of_week"] = None
+        m["start_slot"] = None
+        m["end_slot"] = None
+        m["_missing_schedule"] = True
+        m["status"] = "pending_schedule"
+        final_meetings.append(m)
+        existing_meeting_cores.add(norm)
+        if core:
+            existing_meeting_cores.add(core)
 
     # Debug: log final state
     print(f"[CREDIT] final: {len(final_recs)} recs, {len(final_meetings)} meetings, total={total:.0f}cr")
@@ -907,6 +964,34 @@ def _enforce_credit_limits(
     return parsed
 
 
+def _parse_raw_schedule_slots(raw: str) -> list[tuple[int, int, int]]:
+    """Parse Chinese schedule text like '星期二第3-4节; 周四第5-6节' → [(2,3,4), (4,5,6)]."""
+    if not raw:
+        return []
+    wd_map = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '日': 7}
+    slots: list[tuple[int, int, int]] = []
+
+    # Standard: 星期X第A-B节
+    for m in re.finditer(r'星期([一二三四五六日])第?(\d+)-(\d+)节', raw):
+        slots.append((wd_map[m.group(1)], int(m.group(2)), int(m.group(3))))
+    if slots:
+        return slots
+
+    # Abbrev: 周X A-B
+    for m in re.finditer(r'周([一二三四五六日])\s*(\d+)-(\d+)', raw):
+        slots.append((wd_map[m.group(1)], int(m.group(2)), int(m.group(3))))
+    if slots:
+        return slots
+
+    # Fallback: any 星期 + any number range
+    day_match = re.search(r'星期([一二三四五六日])', raw)
+    slot_match = re.search(r'(\d+)-(\d+)', raw)
+    if day_match and slot_match:
+        slots.append((wd_map[day_match.group(1)], int(slot_match.group(1)), int(slot_match.group(2))))
+
+    return slots
+
+
 def _sanitize_recommendation_payload(
     parsed: dict,
     offerings: list[dict],
@@ -915,11 +1000,10 @@ def _sanitize_recommendation_payload(
     warnings = list(sanitized.get("warnings") or [])
     lookup = _build_course_offering_lookup(offerings)
     cleaned_meetings: list[dict] = []
-    dropped_count = 0
+    dropped_names: list[str] = []
 
     for meeting in sanitized.get("meetings") or []:
         if not isinstance(meeting, dict):
-            dropped_count += 1
             continue
 
         candidate = dict(meeting)
@@ -940,6 +1024,21 @@ def _sanitize_recommendation_payload(
                     matched_value = matched.get(field)
                     if matched_value not in (None, ""):
                         candidate[field] = matched_value
+            # Also try to fill slots from 上课信息 if still empty
+            if candidate.get("day_of_week") in (None, ""):
+                raw_sched = str(matched.get("上课信息") or "")
+                parsed_slots = _parse_raw_schedule_slots(raw_sched)
+                if parsed_slots:
+                    candidate["day_of_week"] = parsed_slots[0][0]
+                    candidate["start_slot"] = parsed_slots[0][1]
+                    candidate["end_slot"] = parsed_slots[0][2]
+                    if len(parsed_slots) > 1:
+                        candidate.setdefault("metadata", {})
+                        if isinstance(candidate.get("metadata"), dict):
+                            candidate["metadata"]["extra_slots"] = [
+                                {"day_of_week": d, "start_slot": s, "end_slot": e}
+                                for d, s, e in parsed_slots[1:]
+                            ]
             if not candidate.get("metadata") and isinstance(
                 matched.get("metadata"),
                 dict,
@@ -967,13 +1066,16 @@ def _sanitize_recommendation_payload(
             and candidate["start_slot"] <= candidate["end_slot"]
         ):
             cleaned_meetings.append(candidate)
-        else:
-            dropped_count += 1
+        elif candidate.get("course_name"):
+            # Keep it but mark as missing schedule — frontend will show "待确认"
+            candidate["_missing_schedule"] = True
+            cleaned_meetings.append(candidate)
+            dropped_names.append(str(candidate.get("course_name", "")).strip())
 
-    if dropped_count:
+    if dropped_names:
         warnings.append(
-            f"已忽略 {dropped_count} 条缺少完整上课时间的 meetings，"
-            "避免因空字段导致生成失败。"
+            f"以下课程暂无具体上课时间，已标记为待确认：{', '.join(dropped_names[:5])}"
+            f"{' 等' if len(dropped_names) > 5 else ''}"
         )
 
     sanitized["meetings"] = cleaned_meetings
@@ -994,7 +1096,7 @@ def _extract_desired_courses_from_note(
         if candidate:
             candidates.append(candidate)
 
-    for part in re.split(r"[，,。；;、\n/]+", note):
+    for part in re.split(r"[，,。；;、\n/：:\s]+", note):
         candidate = part.strip()
         if 1 < len(candidate) <= 40:
             candidates.append(candidate)
@@ -1519,6 +1621,50 @@ async def get_academic_status(
     )
 
 
+def _generate_plan_with_engine(
+    schedule: CourseSchedule,
+    profile: "StudentProfile",
+    term_id: str,
+    min_credits: int,
+    max_credits: int,
+) -> RecommendationPlan:
+    """使用推荐引擎生成课表，绕过 Agent 直接解析课程数据中的上课时间。
+
+    修复了以下问题：
+    - Agent 生成的 JSON 中 meetings 字段缺失/为 None
+    - 不再依赖不可靠的 LLM Agent，直接使用本地数据解析
+    """
+    from ...services.course_recommendation.recommendation_engine import (
+        plan_schedule_with_llm,
+    )
+
+    plan = plan_schedule_with_llm(
+        term=schedule.term,
+        profile=profile,
+        term_id=term_id,
+        min_credits=min_credits,
+        max_credits=max_credits,
+    )
+
+    # Deduplicate meetings by (course_name + slot) to avoid showing
+    # the same meeting multiple times for courses with multiple offerings.
+    seen_meeting_keys: set[str] = set()
+    deduped_meetings: list["CourseMeeting"] = []
+    for meeting in plan.meetings:
+        key = (
+            meeting.course_name,
+            str(meeting.day_of_week),
+            str(meeting.start_slot),
+            str(meeting.end_slot),
+        )
+        if key not in seen_meeting_keys:
+            seen_meeting_keys.add(key)
+            deduped_meetings.append(meeting)
+    plan.meetings = deduped_meetings
+
+    return plan
+
+
 @router.post("/plan", response_model=RecommendationResponse)
 def plan_courses(req: RecommendationRequest):
     try:
@@ -1617,6 +1763,7 @@ def plan_courses(req: RecommendationRequest):
             career_goal=req.career_goal,
             desired_courses=desired_courses,
             recommendation_note=req.recommendation_note,
+            avoid_time_slots=req.avoid_time_slots,
         )
 
         completed_course_sections = _split_completed_courses_by_term(
@@ -1631,94 +1778,14 @@ def plan_courses(req: RecommendationRequest):
             limit=80,
         )
 
-        agent = AgentRegistry.get(COURSE_RECOMMENDATION_AGENT_NAME)
-        if agent is None:
-            raise HTTPException(
-                status_code=503,
-                detail="Course recommendation agent not initialized",
-            )
-
-        if not AgentRegistry.acquire(COURSE_RECOMMENDATION_AGENT_NAME):
-            raise HTTPException(
-                status_code=429,
-                detail="Course recommendation agent is busy. Please wait.",
-            )
-
-        # Set up search index for agent tools (enables multi-step agent loop)
-        search_index = CourseSearchIndex(offerings, [c.model_dump() for c in completed])
-        set_search_index(search_index)
-
-        try:
-            # Build structured XML prompt for better instruction following
-            curriculum_text = _load_full_curriculum_text(req.major or "") or _format_curriculum_context(curriculum_plan_context)
-            completed_summary = _format_completed_summary(completed)
-            
-            prompt = _build_recommendation_agent_prompt(
-                req,
-                profile,
-                schedule,
-                offerings_for_prompt,
-                completed_course_sections,
-                curriculum_plan_context,
-                desired_courses,
-            )
-            # Try with fallback models if agent's primary model fails
-            raw_response = ""
-            cascade_models = list(dict.fromkeys(
-                ["qwen3.7-plus", "qwen3.6-plus", "qwen3.7-max",
-                 "qwen3-235b-a22b-instruct-2507", "qwen-plus-2025-07-28",
-                 "qwen3.7-flash-2026-07-15", "deepseek-v4-flash-0731", "deepseek-r1"]
-            ))
-            for attempt, fallback_model in enumerate(cascade_models):
-                if attempt > 0:
-                    print(f"[AGENT] Retrying with fallback model {fallback_model}...")
-                    try:
-                        from langchain_openai import ChatOpenAI
-                        from ...services.llm_config import LLMConfig
-                        cfg = LLMConfig.get_instance()
-                        new_llm = ChatOpenAI(
-                            model=fallback_model,
-                            api_key=SecretStr(cfg.api_key or ""),
-                            base_url=cfg.base_url,
-                            temperature=0,
-                        )
-                        agent.reinitialize(new_llm)
-                    except Exception as e:
-                        print(f"[AGENT] Failed to reinitialize with {fallback_model}: {e}")
-                        continue
-                try:
-                    result = agent.run_turn(prompt)
-                    raw_response = result.get("reply", "") if isinstance(result, dict) else ""
-                    parsed = _parse_json_payload(raw_response)
-                    if isinstance(parsed, dict) and parsed.get("recommended_courses"):
-                        break  # Success!
-                except Exception as e:
-                    last_error = e
-                    print(f"[AGENT] Model {fallback_model} failed: {e}")
-                    raw_response = ""
-        finally:
-            AgentRegistry.release(COURSE_RECOMMENDATION_AGENT_NAME)
-            clear_search_index()  # Clean up search index after request
-
-        parsed = _parse_json_payload(raw_response)
-        if not isinstance(parsed, dict):
-            raise ValueError(
-                f"Agent response is not valid JSON: {raw_response[:500]}"
-            )
-
-        parsed.setdefault("term", schedule.term.model_dump(mode="json"))
-        parsed = _sanitize_recommendation_payload(parsed, offerings)
-
-        # ── Enforce credit limits ──────────────────────────────────
-        parsed = _enforce_credit_limits(
-            parsed,
+        # ── 使用推荐引擎直接生成课表（基于课程数据解析，非 Agent） ──
+        plan = _generate_plan_with_engine(
+            schedule=schedule,
+            profile=profile,
+            term_id=req.term_id,
             min_credits=req.min_credits,
             max_credits=req.max_credits,
-            desired_courses=desired_courses,
-            offerings=offerings,
         )
-
-        plan = RecommendationPlan.model_validate(parsed)
 
         # ── Post-processing validation & auto-fix ───────────────────
         completed_names = {c.course_name for c in completed}
@@ -1815,6 +1882,8 @@ def plan_courses_stream(req: RecommendationRequest):
         return _event("tool_progress", payload)
 
     async def event_generator():
+        """Async generator — matches the chat.py pattern.
+        Fast setup runs inline; blocking LLM calls go through iterate_in_threadpool."""
         try:
             yield _status_message("正在加载学期课表数据...")
 
@@ -1873,9 +1942,11 @@ def plan_courses_stream(req: RecommendationRequest):
                 if len(items) == 1:
                     deduped_offerings.extend(items)
                     continue
+
                 def _slot_count(offering: dict) -> int:
                     raw = str(offering.get("上课信息") or "")
                     return len(re.findall(r'星期[一二三四五六日]第\d+-\d+节', raw))
+
                 max_slots = max(_slot_count(item) for item in items)
                 best = [item for item in items if _slot_count(item) == max_slots]
                 deduped_offerings.extend(best[:1])
@@ -1900,157 +1971,24 @@ def plan_courses_stream(req: RecommendationRequest):
                 career_goal=req.career_goal,
                 desired_courses=desired_courses,
                 recommendation_note=req.recommendation_note,
+                avoid_time_slots=req.avoid_time_slots,
             )
 
-            completed_course_sections = _split_completed_courses_by_term(
-                [course.model_dump(mode="json") for course in profile.completed_courses],
-                req.term_id,
-            )
-            offerings_for_prompt = _select_course_offerings_for_prompt(
-                offerings,
-                major=req.major,
-                desired_courses=desired_courses,
-                curriculum_plan_context=curriculum_plan_context,
-                limit=80,
-            )
+            yield _status_message("正在分析课程数据...")
 
-            agent = AgentRegistry.get(COURSE_RECOMMENDATION_AGENT_NAME)
-            if agent is None:
-                yield _status_message("推荐 Agent 未初始化，请检查后端配置")
-                yield _event("error", {"detail": "Course recommendation agent not initialized"})
-                return
+            # ── 使用推荐引擎直接生成课表 ──
+            def _engine_call():
+                return _generate_plan_with_engine(
+                    schedule=schedule,
+                    profile=profile,
+                    term_id=req.term_id,
+                    min_credits=req.min_credits,
+                    max_credits=req.max_credits,
+                )
 
-            if not AgentRegistry.acquire(COURSE_RECOMMENDATION_AGENT_NAME):
-                yield _status_message("推荐 Agent 正忙，请稍后再试")
-                yield _event("error", {"detail": "Course recommendation agent is busy"})
-                return
-
-            search_index = CourseSearchIndex(offerings, [c.model_dump() for c in completed])
-            set_search_index(search_index)
-
-            # ── Build prompt (same as non-streaming endpoint) ────────
-            curriculum_text = _load_full_curriculum_text(req.major or "") or _format_curriculum_context(curriculum_plan_context)
-            completed_summary = _format_completed_summary(completed)
-
-            prompt = _build_recommendation_agent_prompt(
-                req,
-                profile,
-                schedule,
-                offerings_for_prompt,
-                completed_course_sections,
-                curriculum_plan_context,
-                desired_courses,
-            )
-
-            yield _status_message("正在构建推荐方案...")
-
-            raw_response = ""
-            last_error: Exception | None = None
-
-            try:
-                cascade_models = list(dict.fromkeys(
-                    ["qwen3.7-plus", "qwen3.6-plus", "qwen3.7-max",
-                     "qwen3-235b-a22b-instruct-2507", "qwen-plus-2025-07-28",
-                     "qwen3.7-flash-2026-07-15", "deepseek-v4-flash-0731", "deepseek-r1"]
-                ))
-                for attempt, fallback_model in enumerate(cascade_models):
-                    if attempt > 0:
-                        yield _status_message(f"模型重试中 ({fallback_model})...")
-                        try:
-                            from langchain_openai import ChatOpenAI
-                            from ...services.llm_config import LLMConfig
-                            cfg = LLMConfig.get_instance()
-                            new_llm = ChatOpenAI(
-                                model=fallback_model,
-                                api_key=SecretStr(cfg.api_key or ""),
-                                base_url=cfg.base_url,
-                                temperature=0,
-                            )
-                            agent.reinitialize(new_llm)
-                        except Exception as e:
-                            continue
-
-                    try:
-                        # ── Stream the agent loop ──────────────────
-                        yield _status_message("Agent 开始多步推理...")
-
-                        tool_call_count = 0
-                        for event in agent.run_turn_stream(prompt):
-                            ev_type = event.get("event", "")
-
-                            if ev_type == "tool_call":
-                                tool_name = event.get("tool_name", "")
-                                tool_args = event.get("tool_args", {})
-                                tool_call_count += 1
-                                yield _status_message(
-                                    f"第 {tool_call_count} 步: "
-                                    f"{_TOOL_STATUS_MAP.get(tool_name, _DEFAULT_STATUS_MAP).get('start', tool_name)}"
-                                )
-                                yield _tool_event(tool_name, "start", {"args": tool_args})
-
-                            elif ev_type == "tool_result":
-                                tool_output = str(event.get("tool_output", ""))
-                                # 截取简短摘要作为状态
-                                summary = tool_output[:80].replace("\n", " ") + ("..." if len(tool_output) > 80 else "")
-                                yield _status_message(f"  → {summary}")
-                                yield _tool_event("", "end", {"summary": summary})
-
-                            elif ev_type == "thought":
-                                thought_text = str(event.get("text", ""))[:100]
-                                yield _event("thought", {"text": thought_text})
-
-                            elif ev_type == "error":
-                                yield _status_message(f"推理出错: {event.get('message', '')}")
-
-                        # Agent stream finished — get final result from agent
-                        from langchain_core.messages import AIMessage
-                        final_msg = None
-                        for msg in reversed(agent.messages):
-                            if isinstance(msg, AIMessage):
-                                tc = list(getattr(msg, "tool_calls", []) or [])
-                                if not tc:
-                                    final_msg = msg
-                                    break
-
-                        if final_msg:
-                            raw_response = getattr(final_msg, "content", "")
-                            if isinstance(raw_response, str):
-                                parsed = _parse_json_payload(raw_response)
-                                if isinstance(parsed, dict) and parsed.get("recommended_courses"):
-                                    break  # Success!
-
-                        # If no valid JSON reply, try reading from registry's last result
-                        if not raw_response:
-                            raise ValueError("Agent did not produce a valid recommendation JSON")
-
-                    except Exception as e:
-                        last_error = e
-                        print(f"[AGENT-STREAM] Model {fallback_model} failed: {e}")
-                        raw_response = ""
-            finally:
-                AgentRegistry.release(COURSE_RECOMMENDATION_AGENT_NAME)
-                clear_search_index()
-
-            # ── Parse & validate (same as non-streaming) ─────────────
-            yield _status_message("正在校验推荐结果...")
-
-            parsed = _parse_json_payload(raw_response)
-            if not isinstance(parsed, dict):
-                yield _status_message("推荐结果格式异常")
-                yield _event("error", {"detail": f"Agent response is not valid JSON: {raw_response[:500]}"})
-                return
-
-            parsed.setdefault("term", schedule.term.model_dump(mode="json"))
-            parsed = _sanitize_recommendation_payload(parsed, offerings)
-            parsed = _enforce_credit_limits(
-                parsed,
-                min_credits=req.min_credits,
-                max_credits=req.max_credits,
-                desired_courses=desired_courses,
-                offerings=offerings,
-            )
-
-            plan = RecommendationPlan.model_validate(parsed)
+            import asyncio
+            loop = asyncio.get_event_loop()
+            plan = await loop.run_in_executor(None, _engine_call)
 
             completed_names = {c.course_name for c in completed}
             validator = PlanValidator(

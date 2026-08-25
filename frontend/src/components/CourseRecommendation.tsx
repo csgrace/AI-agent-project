@@ -2,11 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   fetchCourseSchedule,
   fetchCourseTerms,
-  requestCoursePlan,
   fetchRecommendationExplanation,
   streamCoursePlan,
   type CourseMeeting,
-  type CoursePlanStreamEvent,
   type RecommendationPlan,
   type TermInfo,
 } from '../api'
@@ -183,8 +181,9 @@ const CourseRecommendation: React.FC<CourseRecommendationProps> = ({ initialMajo
   const [plan, setPlan] = useState<RecommendationPlan | null>(null)
   const [loading, setLoading] = useState(false)
 const [planning, setPlanning] = useState(false)
-const [planProgress, setPlanProgress] = useState<string>('')
+const [, setPlanProgress] = useState<string>('')
 const [planSteps, setPlanSteps] = useState<string[]>([])
+const [agentStep, setAgentStep] = useState<{ current: number; label: string }>({ current: 0, label: '' })
 const [message, setMessage] = useState('')
 const [error, setError] = useState('')
   const [termMenuOpen, setTermMenuOpen] = useState(false)
@@ -352,7 +351,9 @@ const [error, setError] = useState('')
     [academicTermOptions, terms]
   )
 
-  const meetings = plan ? plan.meetings : scheduleMeetings
+  const allMeetings = plan ? plan.meetings : scheduleMeetings
+  const meetings = allMeetings.filter((m) => m.day_of_week && m.start_slot && m.end_slot)
+  const missingScheduleMeetings = allMeetings.filter((m) => !m.day_of_week || !m.start_slot || !m.end_slot)
 
   const openRecommendationModal = () => {
     setRecommendationError('')
@@ -451,8 +452,9 @@ const [error, setError] = useState('')
     setError('')
     setRecommendationExplanation(null)
     setShowExplanation(false)
-    setPlanProgress('')
-    setPlanSteps([])
+setPlanProgress('')
+setPlanSteps([])
+setAgentStep({ current: 0, label: '' })
 
     try {
       const stream = streamCoursePlan({
@@ -475,7 +477,15 @@ const [error, setError] = useState('')
               const data = JSON.parse(evt.data) as { message?: string }
               if (data.message) {
                 setPlanProgress(data.message)
-                setPlanSteps(prev => [...prev.slice(-8), data.message!])
+                setPlanSteps(prev => [...prev.slice(-19), data.message!])
+                // Parse step number from "第 N 步:" format
+                const stepMatch = data.message.match(/^第\s*(\d+)\s*步[:：]\s*(.+)/)
+                if (stepMatch) {
+                  setAgentStep({
+                    current: parseInt(stepMatch[1], 10),
+                    label: stepMatch[2].trim()
+                  })
+                }
               }
             } catch { /* ignore */ }
             break
@@ -529,11 +539,11 @@ const [error, setError] = useState('')
 
       setPlan(finalPlan)
       
-      // 获取推荐解释（新增）
+      // 获取推荐解释
       try {
         const explanationCourses = [
-          ...(payload.recommended_courses || []),
-          ...(payload.postponed_courses || []),
+          ...(finalPlan.recommended_courses || []),
+          ...(finalPlan.postponed_courses || []),
         ].filter((course, index, self) => {
           const courseKey = `${course.course_id || ''}::${course.course_name}`
           return index === self.findIndex((item) => `${item.course_id || ''}::${item.course_name}` === courseKey)
@@ -542,7 +552,7 @@ const [error, setError] = useState('')
         const explanation = await fetchRecommendationExplanation({
           term_id: targetTermId,
           recommended_courses: explanationCourses,
-          postponed_courses: payload.postponed_courses?.map((course) => ({
+          postponed_courses: finalPlan.postponed_courses?.map((course) => ({
             course_id: course.course_id,
             course_name: course.course_name,
             credits: course.credits,
@@ -557,8 +567,8 @@ const [error, setError] = useState('')
       } catch (e) {
         // ignore explanation errors
       }
-      
-      setMessage(`已生成 ${payload.term.label} 的课表推荐。`)
+
+      setMessage(`已生成 ${finalPlan.term.label} 的课表推荐。`)
       setRecommendationModalOpen(false)
     } catch (err) {
       setRecommendationError(err instanceof Error ? err.message : '课表推荐生成失败')
@@ -796,8 +806,20 @@ const [error, setError] = useState('')
                   ))
                 )}
 
+                {missingScheduleMeetings.length > 0 && (
+                  <div style={{ gridColumnStart: 1, gridColumnEnd: 'span 7' }} className="px-3 py-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg mb-2">
+                    ⚠️ 以下课程暂无具体上课时间，已列入推荐名单但未在课表中定位：
+                    {missingScheduleMeetings.map((m, i) => (
+                      <span key={i} className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 font-medium">
+                        {m.course_name}
+                        {m.credits != null && <span className="opacity-70">{m.credits}学分</span>}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 {meetings.map((meeting, index) => {
-                  const span = Math.max(1, meeting.end_slot - meeting.start_slot + 1)
+                  const span = Math.max(1, meeting.end_slot! - meeting.start_slot! + 1)
                   const colorKey = baseCourseName(meeting.course_name) || meeting.course_name
                   const colorStyle = colorFromText(colorKey)
                   const meetingReasonRaw = meeting.metadata?.['reason']
@@ -808,8 +830,8 @@ const [error, setError] = useState('')
                       key={`${meeting.course_name}-${index}`}
                       className="cr-meeting-card mx-2 my-1 rounded-xl border px-3 py-2 text-[11px] shadow-sm backdrop-blur"
                       style={{
-                        gridColumnStart: meeting.day_of_week + 1,
-                        gridRowStart: meeting.start_slot + 1,
+                        gridColumnStart: meeting.day_of_week! + 1,
+                        gridRowStart: meeting.start_slot! + 1,
                         gridRowEnd: `span ${span}`,
                         ['--cr-bg' as string]: colorStyle.backgroundColor,
                         ['--cr-border' as string]: colorStyle.borderColor,
@@ -1111,15 +1133,32 @@ const [error, setError] = useState('')
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500"></span>
                   </div>
-                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Agent 推理中</span>
+                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                    Agent 推理中
+                    {agentStep.current > 0 && (
+                      <span className="ml-1.5 inline-flex items-center rounded-full bg-emerald-200/80 dark:bg-emerald-800/60 px-1.5 py-0.5 text-[10px] font-medium text-emerald-800 dark:text-emerald-200">
+                        第 {agentStep.current} 步
+                      </span>
+                    )}
+                  </span>
                 </div>
-                <div className="max-h-24 overflow-y-auto space-y-0.5 text-[11px] text-emerald-800/80 dark:text-emerald-200/70">
-                  {planSteps.map((step, i) => (
-                    <div key={i} className="flex items-center gap-1.5">
-                      <span className="text-emerald-500">›</span>
-                      <span className="truncate">{step}</span>
-                    </div>
-                  ))}
+                {/* Current step highlight */}
+                {agentStep.label && (
+                  <div className="mb-2 rounded-lg bg-emerald-100/90 dark:bg-emerald-900/70 px-2 py-1.5 text-xs font-medium text-emerald-900 dark:text-emerald-100 truncate">
+                    🔧 {agentStep.label}
+                  </div>
+                )}
+                {/* Step history */}
+                <div className="max-h-28 overflow-y-auto space-y-0.5 text-[11px] text-emerald-800/80 dark:text-emerald-200/70">
+                  {planSteps.map((step, i) => {
+                    const isLast = i === planSteps.length - 1
+                    return (
+                      <div key={i} className={`flex items-center gap-1.5 ${isLast ? 'font-semibold text-emerald-900 dark:text-emerald-100' : ''}`}>
+                        <span className={isLast ? 'text-emerald-600 dark:text-emerald-400' : 'text-emerald-500'}>›</span>
+                        <span className="truncate">{step}</span>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -1139,28 +1178,7 @@ const [error, setError] = useState('')
                 disabled={planning || recommendationTermOptions.length === 0}
                 className="rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {planning ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="flex items-center gap-2">
-                      <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span>{planProgress || '正在启动...'}</span>
-                    </div>
-                    {planSteps.length > 0 && (
-                      <div className="w-full max-w-xs text-center">
-                        <div className="flex flex-wrap justify-center gap-1 mb-1">
-                          {planSteps.slice(-5).map((_, i) => (
-                            <span key={i} className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" style={{ animationDelay: `${i * 150}ms` }} />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  '生成课表推荐'
-                )}
+                {planning ? '生成中...' : '生成课表推荐'}
               </button>
             </div>
           </div>
