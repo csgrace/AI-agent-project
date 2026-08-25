@@ -22,7 +22,7 @@ class CourseRecommendationAgent:
         self,
         model,
         *,
-        max_steps: int = 2,
+        max_steps: int = 8,
         system_prompt: str = COURSE_AGENT_SYSTEM_PROMPT,
         tools: Optional[List[Any]] = None,
     ) -> None:
@@ -35,7 +35,7 @@ class CourseRecommendationAgent:
             model,
             tools=self.tools,
             system_prompt=system_prompt,
-            middleware=[],
+            middleware=None,
         )
         self.runner = AgentRunner(compiled_agent, max_steps=max_steps)
         self.messages: List[BaseMessage] = self.runner.messages
@@ -54,7 +54,7 @@ class CourseRecommendationAgent:
             new_model,
             tools=self.tools,
             system_prompt=self._system_prompt,
-            middleware=[],
+            middleware=None,
         )
         self.runner = AgentRunner(compiled_agent, max_steps=self.max_steps)
         if existing_messages:

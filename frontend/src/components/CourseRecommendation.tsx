@@ -461,8 +461,9 @@ setAgentStep({ current: 0, label: '' })
         term_id: targetTermId,
         major: currentMajor.trim() || undefined,
         interests: [recommendationNote.trim(), `年级:${currentGrade}`].filter(Boolean),
-        career_goal: avoidTimeText || undefined,
-        recommendation_note: `${recommendationNote} 避开${avoidTimeSlots} 建议最低学分：${minCredits}，建议最高学分：${maxCredits}`.trim() || undefined,
+        career_goal: undefined,
+        recommendation_note: recommendationNote.trim() || undefined,
+        avoid_time_slots: avoidTimeSlots || undefined,
         min_credits: minCredits,
         max_credits: maxCredits,
         use_llm: true,
@@ -512,7 +513,10 @@ setAgentStep({ current: 0, label: '' })
           }
           case 'done': {
             try {
-              const data = JSON.parse(evt.data) as { plan?: RecommendationPlan }
+              const data = JSON.parse(evt.data) as { status?: string; plan?: RecommendationPlan }
+              if (data.status && data.status !== 'success') {
+                throw new Error('选课方案未通过全部约束校验')
+              }
               if (data.plan) {
                 finalPlan = data.plan as RecommendationPlan
               }

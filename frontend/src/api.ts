@@ -501,6 +501,7 @@ export async function* streamCoursePlan(payload: {
   min_credits?: number;
   max_credits?: number;
   use_llm?: boolean;
+  avoid_time_slots?: string;
 }): AsyncGenerator<CoursePlanStreamEvent> {
   const res = await fetch(`${API_BASE}/course-recommendation/plan/stream`, {
     method: 'POST',

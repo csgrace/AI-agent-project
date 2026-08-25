@@ -50,7 +50,7 @@ class PlanValidator:
     ):
         self.min_credits = min_credits
         self.max_credits = max_credits
-        self.completed_names = completed_course_names or set()
+        self.completed_names = {_normalize(name) for name in (completed_course_names or set()) if name}
 
     def validate(self, plan: RecommendationPlan) -> PlanValidationResult:
         """Run all validation checks on the plan.
@@ -181,26 +181,39 @@ class PlanValidator:
                     )
 
     def _validate_time_conflicts(self, plan: RecommendationPlan, result: PlanValidationResult):
-        slots: dict[tuple, str] = {}
+        seen: list[CourseMeeting] = []
         for m in plan.meetings:
-            key = (m.day_of_week, m.start_slot, m.end_slot)
-            if key in slots:
-                result.add_issue(
-                    f"时间冲突: {m.course_name} 与 {slots[key]} "
-                    f"(星期{m.day_of_week}, 第{m.start_slot}-{m.end_slot}节)",
-                    {"action": "resolve_conflicts"}
-                )
-            else:
-                slots[key] = m.course_name
+            if m.day_of_week is None or m.start_slot is None or m.end_slot is None:
+                continue
+            for previous in seen:
+                if (
+                    previous.day_of_week == m.day_of_week
+                    and previous.start_slot is not None
+                    and previous.end_slot is not None
+                    and m.start_slot <= previous.end_slot
+                    and previous.start_slot <= m.end_slot
+                ):
+                    result.add_issue(
+                        f"时间冲突: {m.course_name} 与 {previous.course_name} "
+                        f"(星期{m.day_of_week}, 第{m.start_slot}-{m.end_slot}节)",
+                        {"action": "resolve_conflicts"},
+                    )
+            seen.append(m)
 
     def _validate_meeting_completeness(self, plan: RecommendationPlan, result: PlanValidationResult):
         rec_names = {_normalize(c.course_name) for c in plan.recommended_courses}
         meeting_names = {_normalize(m.course_name) for m in plan.meetings}
 
-        missing = rec_names - meeting_names
-        if missing and rec_names:
-            result.add_warning(
-                f"以下课程缺少课表时间信息: {', '.join(missing)}"
+        scheduled_names = {
+            _normalize(c.course_name)
+            for c in plan.recommended_courses
+            if c.status != "postponed"
+        }
+        missing = scheduled_names - meeting_names
+        if missing:
+            result.add_issue(
+                f"以下已排课程缺少权威课表时间: {', '.join(sorted(missing))}",
+                {"action": "replace_missing_schedule"},
             )
 
 

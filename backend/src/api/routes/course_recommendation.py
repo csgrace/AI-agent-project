@@ -24,6 +24,16 @@ from ...services.course_recommendation import (
 )
 from ...services.course_recommendation.tis_client import TisClientError
 from ...services.course_recommendation.validator import PlanValidator
+from ...services.course_recommendation.models import (
+    CourseMeeting,
+    GraduationCheck,
+    RecommendedCourse,
+)
+from ...services.llm_config import LLMConfig
+from ...agents.course_recommendation.agent import CourseRecommendationAgent
+from ...agents.course_recommendation.prompt_builder import build_course_selection_prompt
+from ...agents.course_recommendation.tools import build_request_scoped_course_tools
+from langchain_core.messages import ToolMessage
 from ...services.document_qa import get_document_qa_service
 from ...rag_pipeline.llm_service import LLMService
 from ...services.course_recommendation.recommendation_engine import (
@@ -1614,6 +1624,9 @@ async def get_academic_status(
     )
 
 
+MAX_AGENT_PLAN_ATTEMPTS = 3
+
+
 def _generate_plan_with_engine(
     schedule: CourseSchedule,
     profile: "StudentProfile",
@@ -1656,6 +1669,209 @@ def _generate_plan_with_engine(
     plan.meetings = deduped_meetings
 
     return plan
+
+
+def _build_agent_catalog(offerings: list[dict]) -> list[dict]:
+    """Group raw offering rows into stable, authoritative teaching-class entries."""
+    grouped: dict[str, dict] = {}
+    for index, raw in enumerate(offerings):
+        name = str(raw.get("course_name") or raw.get("课程名称") or "").strip()
+        if not name:
+            continue
+        course_id = str(raw.get("course_id") or raw.get("课程代码") or "").strip()
+        teaching_class = str(raw.get("teaching_class") or raw.get("教学班") or "").strip()
+        kind = str(raw.get("课程种类") or raw.get("course_kind") or "theory").strip().lower()
+        if kind not in {"theory", "lab"}:
+            kind = "theory"
+        key = "::".join((course_id or _normalize_course_key(name), teaching_class or name, kind))
+        item = grouped.setdefault(key, {
+            "offering_id": f"offering::{key}",
+            "course_id": course_id or None,
+            "course_name": name,
+            "teaching_class": teaching_class or None,
+            "kind": kind,
+            "credits": _safe_float(raw.get("credits") or raw.get("学分")) or 0.0,
+            "instructor": raw.get("instructor") or raw.get("教师"),
+            "source": raw.get("source") or "course_catalog",
+            "meetings": [],
+        })
+        day = raw.get("day_of_week")
+        start = raw.get("start_slot")
+        end = raw.get("end_slot")
+        if day and start and end:
+            meeting = {
+                "day_of_week": int(day),
+                "start_slot": int(start),
+                "end_slot": int(end),
+                "location": raw.get("location"),
+                "weeks": raw.get("weeks"),
+            }
+            if meeting not in item["meetings"]:
+                item["meetings"].append(meeting)
+    return list(grouped.values())
+
+
+def _plan_from_offering_ids(
+    *,
+    term: TermInfo,
+    catalog: list[dict],
+    selected_ids: list[str],
+    rationale: str,
+    warnings: list[str],
+) -> RecommendationPlan:
+    by_id = {item["offering_id"]: item for item in catalog}
+    selected = [by_id[item_id] for item_id in selected_ids if item_id in by_id]
+    recommended: list[RecommendedCourse] = []
+    meetings: list[CourseMeeting] = []
+    for item in selected:
+        reason = "由 Agent 根据用户需求、培养方案和约束校验选择。"
+        recommended.append(RecommendedCourse(
+            course_id=item.get("course_id"),
+            course_name=item["course_name"],
+            credits=item.get("credits"),
+            score=1.0,
+            reason=reason,
+            status="scheduled",
+            source="agent_selection",
+        ))
+        for source_meeting in item["meetings"]:
+            meetings.append(CourseMeeting(
+                course_id=item.get("course_id"),
+                course_name=item["course_name"],
+                instructor=item.get("instructor"),
+                location=source_meeting.get("location"),
+                day_of_week=source_meeting["day_of_week"],
+                start_slot=source_meeting["start_slot"],
+                end_slot=source_meeting["end_slot"],
+                weeks=source_meeting.get("weeks"),
+                credits=item.get("credits"),
+                source="course_catalog",
+                metadata={"offering_id": item["offering_id"], "reason": reason},
+            ))
+    return RecommendationPlan(
+        term=term,
+        recommended_courses=recommended,
+        meetings=meetings,
+        warnings=warnings,
+        rationale=rationale or "已通过课程目录约束校验生成推荐。",
+        graduation_check=GraduationCheck(
+            status="generated",
+            summary=f"已生成 {len(recommended)} 个可排课教学班的推荐方案。",
+            missing_courses=[],
+        ),
+    )
+
+
+def _run_constrained_agent_plan(
+    *,
+    req: RecommendationRequest,
+    schedule: CourseSchedule,
+    profile,
+    offerings: list[dict],
+    completed: list[CompletedCourse],
+    curriculum_plan_context: list[dict],
+    desired_courses: list[str],
+    emit=None,
+) -> tuple[RecommendationPlan, int]:
+    """Run Agent -> authoritative assembly -> validator feedback, with bounded repair."""
+    model = LLMConfig.get_instance().build_chat_model(tier="smart")
+    if model is None:
+        raise HTTPException(status_code=503, detail="未配置 API Key，无法执行选课 Agent Loop")
+
+    catalog = _build_agent_catalog(offerings)
+    if not catalog:
+        raise HTTPException(status_code=422, detail="没有可用于 Agent 选课的权威课程数据")
+
+    completed_names = {course.course_name for course in completed}
+    validator = PlanValidator(
+        min_credits=req.min_credits,
+        max_credits=req.max_credits,
+        completed_course_names=completed_names,
+    )
+    feedback: list[str] = []
+    last_issues: list[str] = []
+
+    for attempt in range(1, MAX_AGENT_PLAN_ATTEMPTS + 1):
+        if emit:
+            emit("status", {"message": f"第 {attempt} 步: Agent 正在搜索课程并校验约束..."})
+            if feedback:
+                emit("repair_attempt", {"attempt": attempt, "max_attempts": MAX_AGENT_PLAN_ATTEMPTS, "issues": feedback})
+        tools = build_request_scoped_course_tools(
+            catalog,
+            completed_course_names=completed_names,
+            min_credits=req.min_credits,
+            max_credits=req.max_credits,
+        )
+        agent = CourseRecommendationAgent(model, max_steps=8, tools=tools)
+        prompt = build_course_selection_prompt(
+            term_id=req.term_id,
+            major=req.major,
+            interests=req.interests,
+            career_goal=req.career_goal,
+            recommendation_note=req.recommendation_note,
+            desired_courses=desired_courses,
+            min_credits=req.min_credits,
+            max_credits=req.max_credits,
+            completed_course_names=sorted(completed_names),
+            curriculum_plan_context=curriculum_plan_context,
+            validation_feedback=feedback,
+        )
+        reply = ""
+        if emit:
+            for event in agent.run_turn_stream(prompt):
+                if event.get("event") == "tool_call":
+                    emit("tool_progress", {"tool": event.get("tool_name"), "stage": "start", "label": f"调用 {event.get('tool_name')}"})
+                elif event.get("event") == "tool_result":
+                    emit("tool_progress", {"tool": "agent_tool", "stage": "end", "summary": "已获得课程与约束校验结果"})
+                elif event.get("event") == "final":
+                    reply = str(event.get("reply") or "")
+                elif event.get("event") == "error":
+                    raise RuntimeError(str(event.get("message") or "Agent 运行失败"))
+        else:
+            reply = str(agent.run_turn(prompt).get("reply") or "")
+
+        tool_names = {str(message.name) for message in agent.messages if isinstance(message, ToolMessage)}
+        parsed = _parse_json_payload(reply)
+        if not isinstance(parsed, dict):
+            feedback = ["Agent 输出不是有效 JSON，请重新使用工具并只输出 schema 要求的 JSON。"]
+            last_issues = feedback
+            continue
+        selected_ids = parsed.get("selected_offering_ids")
+        if not isinstance(selected_ids, list) or not all(isinstance(item, str) for item in selected_ids):
+            feedback = ["输出必须包含 selected_offering_ids 字符串数组。"]
+            last_issues = feedback
+            continue
+        required_tools = {
+            "search_available_courses",
+            "get_course_details",
+            "check_selection_constraints",
+        }
+        if not required_tools.issubset(tool_names):
+            feedback = ["必须实际调用 search_available_courses、get_course_details 与 check_selection_constraints 后再输出方案。"]
+            last_issues = feedback
+            continue
+
+        plan = _plan_from_offering_ids(
+            term=schedule.term,
+            catalog=catalog,
+            selected_ids=selected_ids,
+            rationale=str(parsed.get("rationale") or ""),
+            warnings=[str(item) for item in parsed.get("warnings", []) if isinstance(item, str)],
+        )
+        result = validator.validate(plan)
+        if result.is_valid:
+            if emit:
+                emit("validation_passed", {"attempt": attempt, "warnings": result.warnings})
+            plan.warnings.extend(result.warnings)
+            return plan, attempt
+        last_issues = result.issues
+        feedback = result.issues + result.warnings
+
+    detail = "；".join(last_issues) or "Agent 在最大修订次数内未生成可行选课方案。"
+    raise HTTPException(
+        status_code=422,
+        detail=f"无法生成满足全部约束的选课方案：{detail}",
+    )
 
 
 @router.post("/plan", response_model=RecommendationResponse)
@@ -1771,28 +1987,17 @@ def plan_courses(req: RecommendationRequest):
             limit=80,
         )
 
-        # ── 使用推荐引擎直接生成课表（基于课程数据解析，非 Agent） ──
-        plan = _generate_plan_with_engine(
+        # The Agent selects only catalog IDs. The service then assembles factual
+        # meetings and feeds every validation failure back into a bounded repair loop.
+        plan, _attempts = _run_constrained_agent_plan(
+            req=req,
             schedule=schedule,
             profile=profile,
-            term_id=req.term_id,
-            min_credits=req.min_credits,
-            max_credits=req.max_credits,
+            offerings=offerings,
+            completed=completed,
+            curriculum_plan_context=curriculum_plan_context,
+            desired_courses=desired_courses,
         )
-
-        # ── Post-processing validation & auto-fix ───────────────────
-        completed_names = {c.course_name for c in completed}
-        validator = PlanValidator(
-            min_credits=req.min_credits,
-            max_credits=req.max_credits,
-            completed_course_names=completed_names,
-        )
-        validation_result = validator.validate(plan)
-        if not validation_result.is_valid:
-            print(f"[VALIDATOR] Issues found: {validation_result.issues}")
-            plan, fix_warnings = validator.auto_fix(plan)
-            plan.warnings.extend(fix_warnings)
-            print(f"[VALIDATOR] Auto-fix applied, final plan: {len(plan.recommended_courses)} courses")
     except Exception as e:
         import os
         import traceback
@@ -1967,44 +2172,46 @@ def plan_courses_stream(req: RecommendationRequest):
                 avoid_time_slots=req.avoid_time_slots,
             )
 
-            yield _status_message("正在分析课程数据...")
+            yield _status_message("正在启动选课 Agent Loop...")
 
-            # ── 使用推荐引擎直接生成课表 ──
-            def _engine_call():
-                return _generate_plan_with_engine(
-                    schedule=schedule,
-                    profile=profile,
-                    term_id=req.term_id,
-                    min_credits=req.min_credits,
-                    max_credits=req.max_credits,
-                )
+            def _emit(event_type: str, payload: dict) -> None:
+                emitted_events.append(_event(event_type, payload))
 
+            emitted_events: list[dict] = []
             import asyncio
             loop = asyncio.get_event_loop()
-            plan = await loop.run_in_executor(None, _engine_call)
-
-            completed_names = {c.course_name for c in completed}
-            validator = PlanValidator(
-                min_credits=req.min_credits,
-                max_credits=req.max_credits,
-                completed_course_names=completed_names,
+            plan, attempts = await loop.run_in_executor(
+                None,
+                lambda: _run_constrained_agent_plan(
+                    req=req,
+                    schedule=schedule,
+                    profile=profile,
+                    offerings=offerings,
+                    completed=completed,
+                    curriculum_plan_context=curriculum_plan_context,
+                    desired_courses=desired_courses,
+                    emit=_emit,
+                ),
             )
-            validation_result = validator.validate(plan)
-            if not validation_result.is_valid:
-                print(f"[PLAN-STREAM] Validation warnings: {validation_result.warnings}")
+            for emitted in emitted_events:
+                yield emitted
 
-            yield _status_message("课表推荐生成完成！")
-            yield _event("done", {"plan": plan.model_dump(mode="json")})
+            yield _status_message(f"课表推荐已通过校验（第 {attempts} 轮）。")
+            yield _event("done", {"status": "success", "attempts": attempts, "plan": plan.model_dump(mode="json")})
 
-        except HTTPException:
-            raise
+        except HTTPException as exc:
+            # Once an SSE response starts, surface business validation failures
+            # as events so the frontend can present actionable feedback.
+            yield _status_message(f"未能生成可行方案: {exc.detail}")
+            yield _event("error", {"detail": str(exc.detail), "status": "unrepairable"})
+            yield _event("done", {"status": "unrepairable"})
         except Exception as e:
             print(f"[PLAN-STREAM] Error: {e}")
             import traceback
             traceback.print_exc()
             yield _status_message(f"生成失败: {e}")
-            yield _event("error", {"detail": str(e)})
-            yield _event("done", {})
+            yield _event("error", {"detail": str(e), "status": "error"})
+            yield _event("done", {"status": "error"})
 
     return EventSourceResponse(event_generator())
 
